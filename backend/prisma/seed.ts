@@ -17,7 +17,7 @@ async function main() {
     },
   });
 
-  const moderator = await prisma.user.upsert({
+  const _moderator = await prisma.user.upsert({
     where: { email: 'moderator@test.com' },
     update: {},
     create: {
@@ -28,7 +28,7 @@ async function main() {
     },
   });
 
-  const admin = await prisma.user.upsert({
+  const _admin = await prisma.user.upsert({
     where: { email: 'admin@test.com' },
     update: {},
     create: {
