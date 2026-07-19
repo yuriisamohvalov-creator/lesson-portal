@@ -1,13 +1,137 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ArticleStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+enum VideoType {
+  YOUTUBE
+  UPLOADED
+}
+
+enum ModerationAction {
+  APPROVE
+  REJECT
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  role         UserRole @default(USER)
+  isBlocked    Boolean  @default(false) @map("is_blocked")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  articles       Article[]
+  courses        Course[]
+  moderationLogs ModerationLog[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  articles Article[]
+
+  @@map("categories")
+}
+
+model Course {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  slug        String   @unique
+  authorId    String   @map("author_id") @db.Uuid
+  status      String   @default("draft")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  author   User            @relation(fields: [authorId], references: [id])
+  articles CourseArticle[]
+
+  @@map("courses")
+}
+
+model Article {
+  id              String        @id @default(uuid()) @db.Uuid
+  title           String
+  slug            String        @unique
+  content         String?
+  authorId        String        @map("author_id") @db.Uuid
+  categoryId      String        @map("category_id") @db.Uuid
+  status          ArticleStatus @default(DRAFT)
+  rejectionReason String?       @map("rejection_reason")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  publishedAt     DateTime?     @map("published_at")
+
+  author         User             @relation(fields: [authorId], references: [id])
+  category       Category         @relation(fields: [categoryId], references: [id])
+  videos         Video[]
+  moderationLogs ModerationLog[]
+  courseArticles CourseArticle[]
+
+  @@index([status])
+  @@map("articles")
+}
+
+model CourseArticle {
+  id        String @id @default(uuid()) @db.Uuid
+  courseId   String @map("course_id") @db.Uuid
+  articleId String @map("article_id") @db.Uuid
+  order     Int
+
+  course  Course  @relation(fields: [courseId], references: [id])
+  article Article @relation(fields: [articleId], references: [id])
+
+  @@unique([courseId, articleId])
+  @@map("course_articles")
+}
+
+model Video {
+  id            String    @id @default(uuid()) @db.Uuid
+  articleId     String    @map("article_id") @db.Uuid
+  type          VideoType
+  youtubeUrl    String?   @map("youtube_url")
+  s3Key         String?   @map("s3_key")
+  s3Bucket      String?   @map("s3_bucket")
+  duration      Int?
+  processStatus String    @default("pending") @map("process_status")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  article Article @relation(fields: [articleId], references: [id])
+
+  @@map("videos")
+}
+
+model ModerationLog {
+  id          String           @id @default(uuid()) @db.Uuid
+  articleId   String           @map("article_id") @db.Uuid
+  moderatorId String           @map("moderator_id") @db.Uuid
+  action      ModerationAction
+  comment     String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  article   Article @relation(fields: [articleId], references: [id])
+  moderator User    @relation(fields: [moderatorId], references: [id])
+
+  @@map("moderation_logs")
 }
