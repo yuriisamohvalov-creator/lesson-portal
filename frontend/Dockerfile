@@ -1,3 +1,12 @@
+FROM node:22-slim AS development
+RUN apt-get update -y && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY package*.json ./
+COPY tsconfig.json next.config.js ./
+COPY . .
+EXPOSE 3000
+CMD ["npm", "run", "dev", "--", "-H", "0.0.0.0"]
+
 FROM node:22-slim AS builder
 WORKDIR /app
 COPY package*.json ./

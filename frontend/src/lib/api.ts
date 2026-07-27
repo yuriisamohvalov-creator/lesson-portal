@@ -1,4 +1,15 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+function getApiBase(): string {
+  // Server-side (SSR in Docker): use internal service name
+  if (typeof window === 'undefined') {
+    return (
+      process.env.API_INTERNAL_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:3001'
+    );
+  }
+  // Browser: use public URL
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+}
 
 let accessToken: string | null = null;
 
@@ -31,7 +42,7 @@ export async function apiFetch<T>(
     reqHeaders['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${getApiBase()}${path}`, {
     method,
     headers: reqHeaders,
     body: body ? JSON.stringify(body) : undefined,
@@ -43,7 +54,7 @@ export async function apiFetch<T>(
     const refreshed = await tryRefresh();
     if (refreshed) {
       reqHeaders['Authorization'] = `Bearer ${accessToken}`;
-      const retryRes = await fetch(`${API_BASE}${path}`, {
+      const retryRes = await fetch(`${getApiBase()}${path}`, {
         method,
         headers: reqHeaders,
         body: body ? JSON.stringify(body) : undefined,
@@ -71,7 +82,7 @@ export async function apiFetch<T>(
 
 async function tryRefresh(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
+    const res = await fetch(`${getApiBase()}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
     });
