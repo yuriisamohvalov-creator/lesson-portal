@@ -1,9 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -41,6 +43,7 @@ model User {
   articles       Article[]
   courses        Course[]
   moderationLogs ModerationLog[]
+  comments       Comment[]
 
   @@map("users")
 }
@@ -88,6 +91,7 @@ model Article {
   videos         Video[]
   moderationLogs ModerationLog[]
   courseArticles CourseArticle[]
+  comments       Comment[]
 
   @@index([status])
   @@map("articles")
@@ -134,4 +138,18 @@ model ModerationLog {
   moderator User    @relation(fields: [moderatorId], references: [id])
 
   @@map("moderation_logs")
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  articleId String   @map("article_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id])
+
+  @@index([articleId])
+  @@map("comments")
 }

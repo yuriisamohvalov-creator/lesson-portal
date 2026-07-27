@@ -1,17 +1,27 @@
 import { PrismaClient, UserRole, ArticleStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import * as argon2 from 'argon2';
 
-const adapter = new PrismaPg(process.env.DATABASE_URL!);
+const adapter = new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL! }));
 const prisma = new PrismaClient({ adapter });
 
+const TEST_PASSWORD = 'testpass123';
+
+async function hashPassword(password: string) {
+  return argon2.hash(password);
+}
+
 async function main() {
+  const passwordHash = await hashPassword(TEST_PASSWORD);
+
   // Users
   const user = await prisma.user.upsert({
     where: { email: 'user@test.com' },
     update: {},
     create: {
       email: 'user@test.com',
-      passwordHash: 'hashed_password_placeholder',
+      passwordHash,
       displayName: 'Test User',
       role: UserRole.USER,
     },
@@ -22,7 +32,7 @@ async function main() {
     update: {},
     create: {
       email: 'moderator@test.com',
-      passwordHash: 'hashed_password_placeholder',
+      passwordHash,
       displayName: 'Test Moderator',
       role: UserRole.MODERATOR,
     },
@@ -33,7 +43,7 @@ async function main() {
     update: {},
     create: {
       email: 'admin@test.com',
-      passwordHash: 'hashed_password_placeholder',
+      passwordHash,
       displayName: 'Test Admin',
       role: UserRole.ADMIN,
     },

@@ -1,1 +1,6 @@
 tz/
+node_modules/
+.env
+dist/
+.next/
+*.log

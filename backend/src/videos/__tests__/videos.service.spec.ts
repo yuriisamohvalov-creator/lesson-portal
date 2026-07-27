@@ -1,0 +1,102 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { VideosService } from '../videos.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { UserRole, VideoType } from '@prisma/client';
+import { CreateYouTubeVideoDto } from '../dto/create-youtube-video.dto';
+import { UploadVideoUrlDto } from '../dto/upload-video-url.dto';
+
+describe('VideosService', () => {
+  let service: VideosService;
+  let prisma: any;
+
+  beforeEach(async () => {
+    prisma = {
+      article: {
+        findUnique: jest.fn(),
+      },
+      video: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        VideosService,
+        { provide: PrismaService, useValue: prisma },
+      ],
+    }).compile();
+
+    service = module.get<VideosService>(VideosService);
+  });
+
+  describe('createYouTube', () => {
+    it('should create a YouTube video for article author', async () => {
+      const dto: CreateYouTubeVideoDto = {
+        youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      };
+      prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'user-1' });
+      prisma.video.create.mockResolvedValue({ id: 'video-1', type: VideoType.YOUTUBE });
+
+      const result = await service.createYouTube('article-1', 'user-1', UserRole.USER, dto);
+
+      expect(result.type).toBe(VideoType.YOUTUBE);
+      expect(prisma.video.create).toHaveBeenCalled();
+    });
+
+    it('should reject non-author user', async () => {
+      prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'author-1' });
+
+      await expect(
+        service.createYouTube('article-1', 'user-1', UserRole.USER, {
+          youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should allow admin to add video to any article', async () => {
+      prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'author-1' });
+      prisma.video.create.mockResolvedValue({ id: 'video-1' });
+
+      const result = await service.createYouTube('article-1', 'admin-1', UserRole.ADMIN, {
+        youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      });
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('getUploadUrl', () => {
+    it('should reject files with invalid extension', async () => {
+      prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'user-1' });
+
+      await expect(
+        service.getUploadUrl('article-1', 'user-1', UserRole.USER, {
+          fileName: 'video.avi',
+          fileSize: 1024,
+        } as UploadVideoUrlDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject files exceeding max size', async () => {
+      prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'user-1' });
+
+      await expect(
+        service.getUploadUrl('article-1', 'user-1', UserRole.USER, {
+          fileName: 'video.mp4',
+          fileSize: 600 * 1024 * 1024,
+        } as UploadVideoUrlDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('findByArticle', () => {
+    it('should throw NotFoundException if article does not exist', async () => {
+      prisma.article.findUnique.mockResolvedValue(null);
+
+      await expect(service.findByArticle('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+});

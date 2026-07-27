@@ -1,0 +1,25 @@
+# Production overrides - no debug ports, no exposed internal services
+services:
+  postgres:
+    restart: always
+
+  minio:
+    restart: always
+
+  redis:
+    restart: always
+
+  backend:
+    restart: always
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+
+  frontend:
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    ports:
+      - "${FRONTEND_PORT:-3002}:3000"
