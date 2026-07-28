@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiFetch, getAccessToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Comments } from '@/components/Comments';
+import { UploadedVideo } from '@/components/UploadedVideo';
 
 function YouTubeEmbed({ url }: { url: string }) {
   const embedUrl = url
@@ -44,6 +45,20 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
       .catch(() => setError('not-found'))
       .finally(() => setLoading(false));
   }, [articleId]);
+
+  useEffect(() => {
+    if (!articleId || !article?.videos?.some(
+      (v: any) => v.type === 'UPLOADED' && v.processStatus === 'pending',
+    )) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      apiFetch<any>(`/articles/${articleId}`).then(setArticle).catch(() => {});
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, [articleId, article?.videos]);
 
   const isAuthor = user && article && user.id === article.authorId;
   const canEdit = isAuthor && article && (article.status === 'DRAFT' || article.status === 'REJECTED');
@@ -189,11 +204,12 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
               {video.type === 'YOUTUBE' && video.youtubeUrl && (
                 <YouTubeEmbed url={video.youtubeUrl} />
               )}
-              {video.type === 'UPLOADED' && video.s3Key && (
-                <video controls style={{ width: '100%', borderRadius: 'var(--radius)', background: '#000' }}>
-                  <source src={`/api/videos/${video.id}/stream`} />
-                  Ваш браузер не поддерживает воспроизведение видео.
-                </video>
+              {video.type === 'UPLOADED' && (
+                <UploadedVideo
+                  videoId={video.id}
+                  url={video.url}
+                  processStatus={video.processStatus}
+                />
               )}
             </div>
           ))}

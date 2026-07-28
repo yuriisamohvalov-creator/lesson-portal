@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { CacheModule } from './cache/cache.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -25,6 +26,7 @@ import { AppService } from './app.service';
         },
       ],
     }),
+    CacheModule,
     PrismaModule,
     AuthModule,
     UsersModule,

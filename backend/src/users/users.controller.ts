@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -62,5 +63,12 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   unblockUser(@Param('id') targetUserId: string) {
     return this.usersService.unblockUser(targetUserId);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  deleteUser(@Req() req: any, @Param('id') targetUserId: string) {
+    return this.usersService.deleteUser(req.user.id, targetUserId);
   }
 }

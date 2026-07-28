@@ -4,19 +4,17 @@ import {
   Body,
   Res,
   Req,
-  UseGuards,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './strategies/jwt.strategy';
-import { UnauthorizedException } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {
@@ -57,7 +55,6 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     return this.authService.logout(res);

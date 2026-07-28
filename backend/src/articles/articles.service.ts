@@ -5,6 +5,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { VideosService } from '../videos/videos.service';
+import { CacheService, CACHE_KEYS } from '../cache/cache.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { ListArticlesDto } from './dto/list-articles.dto';
@@ -13,7 +15,26 @@ import sanitizeHtml from 'sanitize-html';
 
 @Injectable()
 export class ArticlesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly videosService: VideosService,
+    private readonly cache: CacheService,
+  ) {}
+
+  async invalidatePublicListCache() {
+    await this.cache.invalidatePattern('articles:list:*');
+  }
+
+  private buildListCacheKey(dto: ListArticlesDto) {
+    return CACHE_KEYS.articlesList(
+      JSON.stringify({
+        page: dto.page || 1,
+        limit: dto.limit || 20,
+        categoryId: dto.categoryId || '',
+        search: dto.search || '',
+      }),
+    );
+  }
 
   private generateSlug(title: string): string {
     return title
@@ -182,7 +203,10 @@ export class ArticlesService {
     }
 
     if (article.status === ArticleStatus.PUBLISHED) {
-      return article;
+      return {
+        ...article,
+        videos: await this.videosService.attachStreamUrls(article.videos),
+      };
     }
 
     if (!user) {
@@ -190,17 +214,27 @@ export class ArticlesService {
     }
 
     if (article.authorId === user.id) {
-      return article;
+      return {
+        ...article,
+        videos: await this.videosService.attachStreamUrls(article.videos),
+      };
     }
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR) {
-      return article;
+      return {
+        ...article,
+        videos: await this.videosService.attachStreamUrls(article.videos),
+      };
     }
 
     throw new NotFoundException('Article not found');
   }
 
   async findAll(dto: ListArticlesDto) {
+    const cacheKey = this.buildListCacheKey(dto);
+    const cached = await this.cache.get(cacheKey);
+    if (cached) return cached;
+
     const page = dto.page || 1;
     const limit = dto.limit || 20;
     const skip = (page - 1) * limit;
@@ -229,7 +263,7 @@ export class ArticlesService {
       this.prisma.article.count({ where }),
     ]);
 
-    return {
+    const result = {
       data: articles,
       meta: {
         total,
@@ -238,6 +272,9 @@ export class ArticlesService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    await this.cache.set(cacheKey, result, 60);
+    return result;
   }
 
   async findMine(userId: string) {

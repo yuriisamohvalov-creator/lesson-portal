@@ -3,10 +3,19 @@ import { ArticlesService } from '../articles.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ArticleStatus, UserRole } from '@prisma/client';
+import { VideosService } from '../../videos/videos.service';
+import { CacheService } from '../../cache/cache.service';
 
 describe('ArticlesService', () => {
   let service: ArticlesService;
   let prisma: any;
+  let videosService: { attachStreamUrls: jest.Mock };
+  let cacheService: {
+    get: jest.Mock;
+    set: jest.Mock;
+    del: jest.Mock;
+    invalidatePattern: jest.Mock;
+  };
 
   beforeEach(async () => {
     prisma = {
@@ -27,10 +36,23 @@ describe('ArticlesService', () => {
       },
     };
 
+    videosService = {
+      attachStreamUrls: jest.fn(async (videos) => videos),
+    };
+
+    cacheService = {
+      get: jest.fn(async () => null),
+      set: jest.fn(async () => undefined),
+      del: jest.fn(async () => undefined),
+      invalidatePattern: jest.fn(async () => undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ArticlesService,
         { provide: PrismaService, useValue: prisma },
+        { provide: VideosService, useValue: videosService },
+        { provide: CacheService, useValue: cacheService },
       ],
     }).compile();
 

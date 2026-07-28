@@ -1,4 +1,6 @@
-function getApiBase(): string {
+const API_PREFIX = '/api';
+
+export function getApiBase(): string {
   // Server-side (SSR in Docker): use internal service name
   if (typeof window === 'undefined') {
     return (
@@ -9,6 +11,15 @@ function getApiBase(): string {
   }
   // Browser: use public URL
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+}
+
+export function apiPath(path: string): string {
+  if (path.startsWith('/api/')) return path;
+  return `${API_PREFIX}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+export function getApiUrl(path: string): string {
+  return `${getApiBase()}${apiPath(path)}`;
 }
 
 let accessToken: string | null = null;
@@ -42,7 +53,7 @@ export async function apiFetch<T>(
     reqHeaders['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  const res = await fetch(`${getApiBase()}${path}`, {
+  const res = await fetch(getApiUrl(path), {
     method,
     headers: reqHeaders,
     body: body ? JSON.stringify(body) : undefined,
@@ -50,11 +61,11 @@ export async function apiFetch<T>(
     ...rest,
   });
 
-  if (res.status === 401 && accessToken) {
+  if (res.status === 401) {
     const refreshed = await tryRefresh();
     if (refreshed) {
       reqHeaders['Authorization'] = `Bearer ${accessToken}`;
-      const retryRes = await fetch(`${getApiBase()}${path}`, {
+      const retryRes = await fetch(getApiUrl(path), {
         method,
         headers: reqHeaders,
         body: body ? JSON.stringify(body) : undefined,
@@ -65,6 +76,7 @@ export async function apiFetch<T>(
         const err = await retryRes.json().catch(() => ({ message: 'Error' }));
         throw { status: retryRes.status, ...err };
       }
+      if (retryRes.status === 204) return undefined as T;
       return retryRes.json();
     }
     setAccessToken(null);
@@ -82,7 +94,7 @@ export async function apiFetch<T>(
 
 async function tryRefresh(): Promise<boolean> {
   try {
-    const res = await fetch(`${getApiBase()}/auth/refresh`, {
+    const res = await fetch(getApiUrl('/auth/refresh'), {
       method: 'POST',
       credentials: 'include',
     });
@@ -92,6 +104,18 @@ async function tryRefresh(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function restoreSession() {
+  const refreshed = await tryRefresh();
+  if (!refreshed) return null;
+
+  try {
+    return await getMe();
+  } catch {
+    setAccessToken(null);
+    return null;
   }
 }
 
@@ -112,7 +136,11 @@ export async function register(email: string, password: string, displayName: str
 }
 
 export async function logout() {
-  await apiFetch('/auth/logout', { method: 'POST' });
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } catch {
+    // Clear local session even if request fails (e.g. expired access token)
+  }
   setAccessToken(null);
 }
 

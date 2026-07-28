@@ -3,10 +3,11 @@ import Link from 'next/link';
 
 export const revalidate = 60;
 
-export default async function CoursePage({ params }: { params: { id: string } }) {
+export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let course;
   try {
-    course = await apiFetch<any>(`/courses/${params.id}`);
+    course = await apiFetch<any>(`/courses/${id}`);
   } catch {
     return <div>Курс не найден</div>;
   }

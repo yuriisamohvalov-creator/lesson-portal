@@ -4,16 +4,18 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function ModerationPage() {
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectComment, setRejectComment] = useState('');
   const [rejectId, setRejectId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const loadQueue = () => {
+    setLoading(true);
     apiFetch<any>('/moderation/queue')
       .then((data) => setArticles(data.data))
       .catch(() => {})
@@ -21,12 +23,13 @@ export default function ModerationPage() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user || (user.role !== 'MODERATOR' && user.role !== 'ADMIN')) {
       router.push('/');
       return;
     }
     loadQueue();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const handleApprove = async (id: string) => {
     await apiFetch(`/moderation/articles/${id}/approve`, { method: 'POST' });
@@ -44,7 +47,7 @@ export default function ModerationPage() {
     loadQueue();
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div>Загрузка...</div>;
 
   return (
     <div>
@@ -58,7 +61,9 @@ export default function ModerationPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               Автор: {article.author?.displayName} · {article.category?.name}
             </p>
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Link href={`/articles/${article.id}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>Открыть</Link>
+              <Link href={`/moderation/history/${article.id}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>История</Link>
               <button className="btn btn-success" onClick={() => handleApprove(article.id)}>Одобрить</button>
               <button className="btn btn-danger" onClick={() => setRejectId(article.id)}>Отклонить</button>
             </div>

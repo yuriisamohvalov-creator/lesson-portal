@@ -1,59 +1,31 @@
-# Nginx Reverse Proxy Configuration
+# Nginx Reverse Proxy — lessons.samoh.ru
 
-## Overview
+Nginx работает **на хосте** (не в Docker), проксирует трафик в контейнеры на localhost.
 
-This directory contains the nginx configuration for the Lessons Portal. Nginx runs outside the docker-compose stack, on the host server, as the single entry point for all traffic.
+## Маршрутизация
 
-## Files
+| Путь | Назначение |
+|------|------------|
+| `/api/*` | Backend (NestJS, порт 3071) |
+| `/health` | Backend health check |
+| `/_next/static/*` | Frontend static (кэш 7 дней) |
+| `/*` | Frontend Next.js (порт 3070) |
 
-- `portal.conf` - Main nginx configuration
-- `setup.sh` - Automated setup script
+Префикс `/api` устраняет конфликт между страницами Next.js (`/articles`, `/courses`) и JSON API.
 
-## Manual Setup
-
-1. Copy the config:
-   ```bash
-   sudo cp portal.conf /etc/nginx/sites-available/lessons-portal
-   sudo ln -s /etc/nginx/sites-available/lessons-portal /etc/nginx/sites-enabled/
-   ```
-
-2. Replace `lessons-portal.example.com` with your actual domain:
-   ```bash
-   sudo sed -i 's/lessons-portal.example.com/YOUR_DOMAIN/g' /etc/nginx/sites-available/lessons-portal
-   ```
-
-3. Install certbot and get SSL certificate:
-   ```bash
-   sudo apt install certbot python3-certbot-nginx
-   sudo certbot certonly --webroot -w /var/www/certbot -d YOUR_DOMAIN
-   ```
-
-4. Test and reload nginx:
-   ```bash
-   sudo nginx -t
-   sudo systemctl reload nginx
-   ```
-
-## Automated Setup
+## Установка
 
 ```bash
-chmod +x setup.sh
-sudo ./setup.sh your-domain.com your-email@example.com
+sudo ./setup.sh lessons.samoh.ru admin@samoh.ru
 ```
 
-## Routing
+## Файлы
 
-| Path | Destination |
-|------|-------------|
-| `/api/*`, `/auth/*`, `/health` | Backend (port 3001) |
-| `/_next/static/*` | Frontend (cached 7 days) |
-| Everything else | Frontend (port 3002) |
+- `portal.conf` — конфигурация nginx
+- `setup.sh` — автоматическая установка + certbot
 
-## Features
+## Требования
 
-- HTTP → HTTPS redirect
-- Let's Encrypt SSL with auto-renewal
-- Rate limiting (10 req/s for API, 30 req/s general)
-- Security headers (HSTS, X-Frame-Options, etc.)
-- Proxy headers (X-Real-IP, X-Forwarded-For, X-Forwarded-Proto)
-- 500MB client body size for file uploads
+- Docker stack запущен (`3070`, `3071` на 127.0.0.1)
+- DNS `lessons.samoh.ru` → IP сервera brix-pc
+- nginx и certbot установлены

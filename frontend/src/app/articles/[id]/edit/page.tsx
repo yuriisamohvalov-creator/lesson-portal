@@ -30,7 +30,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [initialContent, setInitialContent] = useState('');
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const editorRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -38,7 +38,12 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   }, [params]);
 
   useEffect(() => {
-    if (!user || !articleId) { if (!articleId && user) router.push('/auth/login'); return; }
+    if (authLoading) return;
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+    if (!articleId) return;
     Promise.all([
       apiFetch<any>(`/articles/${articleId}`),
       apiFetch<any[]>('/categories'),
@@ -48,7 +53,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setInitialContent(article.content || '');
       setCategories(cats);
     }).catch(() => setError('Не удалось загрузить статью'));
-  }, [user, router, articleId]);
+  }, [user, authLoading, router, articleId]);
 
   useEffect(() => {
     if (editorRef.current && initialContent) {

@@ -138,9 +138,35 @@ export class VideosService {
         type: VideoType.UPLOADED,
         s3Key: dto.s3Key,
         s3Bucket: this.bucket,
-        processStatus: 'ready',
+        processStatus: 'pending',
       },
     });
+  }
+
+  getS3Client() {
+    return this.s3;
+  }
+
+  getBucket() {
+    return this.bucket;
+  }
+
+  async attachStreamUrls<T extends { type: VideoType; s3Key: string | null; processStatus: string }>(
+    videos: T[],
+  ): Promise<(T & { url?: string })[]> {
+    return Promise.all(
+      videos.map(async (video) => {
+        if (
+          video.type === VideoType.UPLOADED &&
+          video.s3Key &&
+          video.processStatus === 'ready'
+        ) {
+          const streamUrl = await this.getStreamUrl(video.s3Key);
+          return { ...video, url: streamUrl };
+        }
+        return video;
+      }),
+    );
   }
 
   async findByArticle(articleId: string) {
@@ -150,16 +176,7 @@ export class VideosService {
     }
 
     const videos = await this.prisma.video.findMany({ where: { articleId } });
-
-    return Promise.all(
-      videos.map(async (video) => {
-        if (video.type === VideoType.UPLOADED && video.s3Key) {
-          const streamUrl = await this.getStreamUrl(video.s3Key);
-          return { ...video, url: streamUrl };
-        }
-        return video;
-      }),
-    );
+    return this.attachStreamUrls(videos);
   }
 
   async getStreamRedirectUrl(videoId: string) {

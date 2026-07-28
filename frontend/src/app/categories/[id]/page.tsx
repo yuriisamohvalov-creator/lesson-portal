@@ -3,10 +3,11 @@ import Link from 'next/link';
 
 export const revalidate = 60;
 
-export default async function CategoryPage({ params }: { params: { id: string } }) {
+export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let data;
   try {
-    data = await apiFetch<any>(`/articles?categoryId=${params.id}&limit=20`);
+    data = await apiFetch<any>(`/articles?categoryId=${id}&limit=20`);
   } catch {
     return <div>Категория не найдена</div>;
   }

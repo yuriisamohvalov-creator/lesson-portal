@@ -18,6 +18,7 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM node:22-alpine AS runner
+RUN apk add --no-cache openssl wget
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm install --no-save prisma dotenv

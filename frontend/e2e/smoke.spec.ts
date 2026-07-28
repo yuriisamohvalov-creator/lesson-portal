@@ -52,3 +52,25 @@ test.describe('Courses page', () => {
     await expect(page.locator('h1')).toContainText('Курсы');
   });
 });
+
+test.describe('Login flow', () => {
+  test('should login and show user menu', async ({ page }) => {
+    await page.goto('/auth/login');
+    await page.fill('input[type="email"]', 'user@test.com');
+    await page.fill('input[type="password"]', 'testpass123');
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL('/');
+    await expect(page.locator('a[href="/profile"]')).toBeVisible();
+  });
+});
+
+test.describe('Admin pages', () => {
+  test('should redirect non-admin from admin stats', async ({ page }) => {
+    await page.goto('/auth/login');
+    await page.fill('input[type="email"]', 'user@test.com');
+    await page.fill('input[type="password"]', 'testpass123');
+    await page.click('button[type="submit"]');
+    await page.goto('/admin/stats');
+    await expect(page).toHaveURL('/');
+  });
+});

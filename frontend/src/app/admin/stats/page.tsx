@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { AdminNav } from '@/components/AdminNav';
 
 export default function AdminStatsPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user || user.role !== 'ADMIN') {
       router.push('/');
       return;
@@ -21,18 +22,15 @@ export default function AdminStatsPage() {
       .then(setStats)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
-  if (loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div>Загрузка...</div>;
   if (!stats) return <div>Ошибка загрузки</div>;
 
   return (
     <div>
       <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Админ-панель</h1>
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-        <Link href="/admin/stats" className="btn btn-primary" style={{ textDecoration: 'none' }}>Статистика</Link>
-        <Link href="/admin/users" className="btn btn-secondary" style={{ textDecoration: 'none' }}>Пользователи</Link>
-      </div>
+      <AdminNav />
       <div className="status-bar">
         <div className="stat">
           <div className="stat-value">{stats.users.total}</div>

@@ -17,6 +17,21 @@ const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
 
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+const REFRESH_COOKIE_CLEAR_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -71,13 +86,7 @@ export class AuthService {
       secret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'dev-refresh-secret',
     });
 
-    (res as any).cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    (res as any).cookie(REFRESH_TOKEN_COOKIE, refreshToken, REFRESH_COOKIE_OPTIONS);
 
     return {
       accessToken,
@@ -102,7 +111,7 @@ export class AuthService {
   }
 
   async logout(res: Response) {
-    (res as any).clearCookie(REFRESH_TOKEN_COOKIE, { path: '/' });
+    (res as any).clearCookie(REFRESH_TOKEN_COOKIE, REFRESH_COOKIE_CLEAR_OPTIONS);
     return { message: 'Logged out' };
   }
 }

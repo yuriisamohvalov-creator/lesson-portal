@@ -35,13 +35,16 @@ export default function CreateArticlePage() {
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const editorRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.push('/auth/login'); return; }
     apiFetch<any[]>('/categories').then(setCategories).catch(() => {});
-  }, [user, router]);
+  }, [user, authLoading, router]);
+
+  if (authLoading || !user) return <div>Загрузка...</div>;
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);

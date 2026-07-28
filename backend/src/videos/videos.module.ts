@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { VideosController } from './videos.controller';
 import { VideosStreamController } from './videos-stream.controller';
 import { VideosService } from './videos.service';
+import { VideoProcessorService } from './video-processor.service';
 
 @Module({
   controllers: [VideosController, VideosStreamController],
-  providers: [VideosService],
+  providers: [VideosService, VideoProcessorService],
   exports: [VideosService],
 })
 export class VideosModule {}

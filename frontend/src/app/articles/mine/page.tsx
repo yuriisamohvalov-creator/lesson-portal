@@ -10,10 +10,11 @@ export default function MyArticlesPage() {
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const loadArticles = () => {
+    setLoading(true);
     apiFetch<any[]>('/articles/mine')
       .then(setArticles)
       .catch(() => {})
@@ -21,12 +22,13 @@ export default function MyArticlesPage() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       router.push('/auth/login');
       return;
     }
     loadArticles();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Вы уверены, что хотите удалить статью?')) return;
@@ -50,7 +52,7 @@ export default function MyArticlesPage() {
     }
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div>Загрузка...</div>;
 
   return (
     <div>

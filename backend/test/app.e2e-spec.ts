@@ -32,6 +32,7 @@ describe('Articles (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api', { exclude: ['health'] });
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
   }, 30000);
@@ -44,7 +45,7 @@ describe('Articles (e2e)', () => {
   describe('Auth flow', () => {
     it('should register a new user', async () => {
       const res = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/auth/register')
         .send({ email: 'e2e-test@test.com', password: 'testpass123', displayName: 'E2E User' })
         .expect(201);
 
@@ -53,7 +54,7 @@ describe('Articles (e2e)', () => {
 
     it('should login as user', async () => {
       const res = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send({ email: 'e2e-test@test.com', password: 'testpass123' })
         .expect(200);
 
@@ -63,7 +64,7 @@ describe('Articles (e2e)', () => {
 
     it('should login as moderator', async () => {
       const res = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send({ email: 'moderator@test.com', password: 'testpass123' })
         .expect(200);
 
@@ -72,7 +73,7 @@ describe('Articles (e2e)', () => {
 
     it('should login as admin', async () => {
       const res = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send({ email: 'admin@test.com', password: 'testpass123' })
         .expect(200);
 
@@ -83,7 +84,7 @@ describe('Articles (e2e)', () => {
   describe('Category setup', () => {
     it('should get categories', async () => {
       const res = await request(app.getHttpServer())
-        .get('/categories')
+        .get('/api/categories')
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -94,7 +95,7 @@ describe('Articles (e2e)', () => {
   describe('Article lifecycle', () => {
     it('should create article as DRAFT', async () => {
       const res = await request(app.getHttpServer())
-        .post('/articles')
+        .post('/api/articles')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ title: 'E2E Test Article', content: '<p>Test content</p>', categoryId })
         .expect(201);
@@ -105,7 +106,7 @@ describe('Articles (e2e)', () => {
 
     it('should submit article to PENDING', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/articles/${articleId}/submit`)
+        .post(`/api/articles/${articleId}/submit`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
@@ -114,7 +115,7 @@ describe('Articles (e2e)', () => {
 
     it('should not allow editing PENDING article', async () => {
       await request(app.getHttpServer())
-        .patch(`/articles/${articleId}`)
+        .patch(`/api/articles/${articleId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ title: 'Updated Title' })
         .expect(409);
@@ -122,13 +123,13 @@ describe('Articles (e2e)', () => {
 
     it('should not show PENDING article to anonymous', async () => {
       await request(app.getHttpServer())
-        .get(`/articles/${articleId}`)
+        .get(`/api/articles/${articleId}`)
         .expect(404);
     });
 
     it('should show PENDING article to admin', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/articles/${articleId}`)
+        .get(`/api/articles/${articleId}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
@@ -137,7 +138,7 @@ describe('Articles (e2e)', () => {
 
     it('should approve article by moderator', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/moderation/articles/${articleId}/approve`)
+        .post(`/api/moderation/api/articles/${articleId}/approve`)
         .set('Authorization', `Bearer ${modToken}`)
         .expect(200);
 
@@ -147,7 +148,7 @@ describe('Articles (e2e)', () => {
 
     it('should show PUBLISHED article publicly', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/articles/${articleId}`)
+        .get(`/api/articles/${articleId}`)
         .expect(200);
 
       expect(res.body.status).toBe('PUBLISHED');
@@ -155,7 +156,7 @@ describe('Articles (e2e)', () => {
 
     it('should appear in public list', async () => {
       const res = await request(app.getHttpServer())
-        .get('/articles')
+        .get('/api/articles')
         .expect(200);
 
       const found = res.body.data.find((a: any) => a.id === articleId);
@@ -168,13 +169,13 @@ describe('Articles (e2e)', () => {
 
     it('should create and submit another article', async () => {
       const createRes = await request(app.getHttpServer())
-        .post('/articles')
+        .post('/api/articles')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ title: 'Reject Test', content: '<p>Content</p>', categoryId })
         .expect(201);
 
       await request(app.getHttpServer())
-        .post(`/articles/${createRes.body.id}/submit`)
+        .post(`/api/articles/${createRes.body.id}/submit`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
@@ -183,7 +184,7 @@ describe('Articles (e2e)', () => {
 
     it('should reject article with comment', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/moderation/articles/${rejectArticleId}/reject`)
+        .post(`/api/moderation/api/articles/${rejectArticleId}/reject`)
         .set('Authorization', `Bearer ${modToken}`)
         .send({ comment: 'Needs improvement' })
         .expect(200);
@@ -194,18 +195,18 @@ describe('Articles (e2e)', () => {
 
     it('should not allow reject without comment', async () => {
       const createRes = await request(app.getHttpServer())
-        .post('/articles')
+        .post('/api/articles')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ title: 'No Comment Test', content: '<p>Content</p>', categoryId })
         .expect(201);
 
       await request(app.getHttpServer())
-        .post(`/articles/${createRes.body.id}/submit`)
+        .post(`/api/articles/${createRes.body.id}/submit`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
       await request(app.getHttpServer())
-        .post(`/moderation/articles/${createRes.body.id}/reject`)
+        .post(`/api/moderation/api/articles/${createRes.body.id}/reject`)
         .set('Authorization', `Bearer ${modToken}`)
         .send({ comment: '' })
         .expect(400);
@@ -213,12 +214,75 @@ describe('Articles (e2e)', () => {
 
     it('should show rejection reason in my articles', async () => {
       const res = await request(app.getHttpServer())
-        .get('/articles/mine')
+        .get('/api/articles/mine')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(200);
 
       const rejected = res.body.find((a: any) => a.id === rejectArticleId);
       expect(rejected?.lastRejectionComment).toBe('Needs improvement');
+    });
+  });
+
+  describe('Comments', () => {
+    it('should create and list comments on published article', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/articles/${articleId}/comments`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ body: 'Great article!' })
+        .expect(201);
+
+      expect(res.body.body).toBe('Great article!');
+
+      const list = await request(app.getHttpServer())
+        .get(`/api/articles/${articleId}/comments`)
+        .expect(200);
+
+      expect(list.body.some((c: any) => c.body === 'Great article!')).toBe(true);
+    });
+  });
+
+  describe('Profile', () => {
+    it('should update user profile', async () => {
+      const res = await request(app.getHttpServer())
+        .patch('/api/users/me')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ displayName: 'Updated E2E User' })
+        .expect(200);
+
+      expect(res.body.displayName).toBe('Updated E2E User');
+    });
+  });
+
+  describe('Admin', () => {
+    it('should return admin stats', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/admin/stats')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body.users.total).toBeGreaterThan(0);
+      expect(res.body.articles.total).toBeGreaterThan(0);
+    });
+
+    it('should list all articles for admin', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/admin/articles')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body.data)).toBe(true);
+    });
+  });
+
+  describe('Moderation history', () => {
+    it('should return moderation history for article', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/moderation/api/articles/${articleId}/history`)
+        .set('Authorization', `Bearer ${modToken}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThan(0);
     });
   });
 });

@@ -37,17 +37,18 @@ export function Navbar() {
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link href="/articles" style={{ textDecoration: 'none', color: 'var(--text)' }}>Статьи</Link>
+          <Link href="/courses" style={{ textDecoration: 'none', color: 'var(--text)' }}>Курсы</Link>
           {user ? (
             <>
               <Link href="/articles/mine" style={{ textDecoration: 'none', color: 'var(--text)' }}>Мои статьи</Link>
               <Link href="/articles/create" style={{ textDecoration: 'none', color: 'var(--primary)' }}>+ Написать</Link>
+              <Link href="/profile" style={{ textDecoration: 'none', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{user.displayName}</Link>
               {(user.role === 'MODERATOR' || user.role === 'ADMIN') && (
                 <Link href="/moderation" style={{ textDecoration: 'none', color: 'var(--warning)' }}>Модерация</Link>
               )}
               {user.role === 'ADMIN' && (
                 <Link href="/admin/stats" style={{ textDecoration: 'none', color: 'var(--danger)' }}>Админ</Link>
               )}
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{user.displayName}</span>
               <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem' }}>
                 Выйти
               </button>
