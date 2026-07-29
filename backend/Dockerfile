@@ -1,3 +1,14 @@
+FROM node:22-slim AS development
+RUN apt-get update -y && apt-get install -y openssl wget && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY package*.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+COPY tsconfig*.json nest-cli.json ./
+COPY . .
+EXPOSE 3001 9229
+CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
+
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
@@ -7,6 +18,7 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM node:22-alpine AS runner
+RUN apk add --no-cache openssl wget
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm install --no-save prisma dotenv

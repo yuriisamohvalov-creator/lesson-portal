@@ -1,6 +1,8 @@
 tz/
 node_modules/
 .env
+docker-compose.release.yml
 dist/
 .next/
 *.log
+minio_data/

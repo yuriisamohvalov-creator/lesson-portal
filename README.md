@@ -27,7 +27,34 @@
    - Swagger Docs: http://localhost:3001/api/docs
    - MinIO Console: http://localhost:9001
 
-## Продакшен
+## Продакшен (brix-pc, lessons.samoh.ru)
+
+Подробная инструкция: [docs/deploy-brix-pc.md](docs/deploy-brix-pc.md)
+
+1. Скопируйте `.env.production.example` в `.env` на сервере
+2. Запустите стек:
+   ```bash
+   ./deploy/deploy-brix-pc.sh lessons.samoh.ru
+   ```
+3. Настройте nginx:
+   ```bash
+   cd nginx && sudo ./setup.sh lessons.samoh.ru admin@samoh.ru
+   ```
+
+API: `https://lessons.samoh.ru/api/*` · Swagger: `https://lessons.samoh.ru/api/docs`
+
+## GitLab CI/CD
+
+Self-hosted GitLab: `ssh://git@gitlab.local:2222/yurii.samohvalov/lesson-portal.git`
+
+| Pipeline | Ветка | Деплой |
+|----------|-------|--------|
+| `deploy:local` | `develop` | dev-стек на runner-хосте (localhost:3002) |
+| `deploy:prod` | `main` / tags | вручную → brix-pc (lessons.samoh.ru) |
+
+Подробнее: [docs/gitlab-ci.md](docs/gitlab-ci.md)
+
+## Продакшен (локально)
 
 1. Скопируйте `.env.example` в `.env` и заполните секреты:
    ```bash

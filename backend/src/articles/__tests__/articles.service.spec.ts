@@ -3,13 +3,23 @@ import { ArticlesService } from '../articles.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ArticleStatus, UserRole } from '@prisma/client';
+import { VideosService } from '../../videos/videos.service';
+import { CacheService } from '../../cache/cache.service';
 
 describe('ArticlesService', () => {
   let service: ArticlesService;
   let prisma: any;
+  let videosService: { attachStreamUrls: jest.Mock };
+  let cacheService: {
+    get: jest.Mock;
+    set: jest.Mock;
+    del: jest.Mock;
+    invalidatePattern: jest.Mock;
+  };
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn(async (ops) => Promise.all(ops)),
       article: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -24,13 +34,33 @@ describe('ArticlesService', () => {
       },
       moderationLog: {
         findMany: jest.fn(),
+        deleteMany: jest.fn(),
       },
+      video: {
+        deleteMany: jest.fn(),
+      },
+      courseArticle: {
+        deleteMany: jest.fn(),
+      },
+    };
+
+    videosService = {
+      attachStreamUrls: jest.fn(async (videos) => videos),
+    };
+
+    cacheService = {
+      get: jest.fn(async () => null),
+      set: jest.fn(async () => undefined),
+      del: jest.fn(async () => undefined),
+      invalidatePattern: jest.fn(async () => undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ArticlesService,
         { provide: PrismaService, useValue: prisma },
+        { provide: VideosService, useValue: videosService },
+        { provide: CacheService, useValue: cacheService },
       ],
     }).compile();
 
@@ -118,6 +148,35 @@ describe('ArticlesService', () => {
       });
       await expect(
         service.submit('1', 'userId', UserRole.USER),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('remove', () => {
+    it('should delete related records before removing the article', async () => {
+      prisma.article.findUnique.mockResolvedValue({
+        id: '1',
+        authorId: 'userId',
+        status: ArticleStatus.DRAFT,
+      });
+      prisma.$transaction = jest.fn(async (ops) => Promise.all(ops));
+
+      await service.remove('1', 'userId', UserRole.USER);
+
+      expect(prisma.moderationLog.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
+      expect(prisma.video.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
+      expect(prisma.courseArticle.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
+      expect(prisma.article.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+    });
+
+    it('should throw ConflictException for non-deletable status', async () => {
+      prisma.article.findUnique.mockResolvedValue({
+        id: '1',
+        authorId: 'userId',
+        status: ArticleStatus.PUBLISHED,
+      });
+      await expect(
+        service.remove('1', 'userId', UserRole.USER),
       ).rejects.toThrow(ConflictException);
     });
   });

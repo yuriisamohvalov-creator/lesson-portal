@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,10 +10,11 @@ export default function MyArticlesPage() {
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const loadArticles = () => {
+    setLoading(true);
     apiFetch<any[]>('/articles/mine')
       .then(setArticles)
       .catch(() => {})
@@ -21,21 +22,22 @@ export default function MyArticlesPage() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       router.push('/auth/login');
       return;
     }
     loadArticles();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Вы уверены, что хотите удалить статью?')) return;
     setDeletingId(id);
     try {
       await apiFetch(`/articles/${id}`, { method: 'DELETE' });
-      setArticles((prev) => prev.filter((a) => a.id !== id));
-    } catch (err: any) {
-      alert(err.message || 'Ошибка удаления');
+      loadArticles();
+    } catch (err: unknown) {
+      alert(getApiErrorMessage(err, 'Ошибка удаления'));
     } finally {
       setDeletingId(null);
     }
@@ -50,7 +52,7 @@ export default function MyArticlesPage() {
     }
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div>Загрузка...</div>;
 
   return (
     <div>
@@ -85,7 +87,7 @@ export default function MyArticlesPage() {
                   </span>
                 </td>
                 <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {new Date(article.createdAt).toLocaleDateString('ru-RU')}
+                  {new Date(article.createdAt).toLocaleString('ru-RU')}
                 </td>
                 <td style={{ padding: '0.75rem 0.5rem' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

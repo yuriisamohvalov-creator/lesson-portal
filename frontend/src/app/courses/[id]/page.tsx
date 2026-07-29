@@ -3,10 +3,11 @@ import Link from 'next/link';
 
 export const revalidate = 60;
 
-export default async function CoursePage({ params }: { params: { id: string } }) {
+export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let course;
   try {
-    course = await apiFetch<any>(`/courses/${params.id}`);
+    course = await apiFetch<any>(`/courses/${id}`);
   } catch {
     return <div>Курс не найден</div>;
   }
@@ -24,7 +25,7 @@ export default async function CoursePage({ params }: { params: { id: string } })
           .sort((a: any, b: any) => a.order - b.order)
           .map((ca: any) => (
             <li key={ca.article.id} style={{ marginBottom: '0.75rem' }}>
-              <Link href={`/articles/${ca.article.id}`}>{ca.article.title}</Link>
+              <Link href={`/articles/${ca.article.id}?course=${id}`}>{ca.article.title}</Link>
             </li>
           ))}
       </ol>

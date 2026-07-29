@@ -186,4 +186,62 @@ export class UsersService {
       },
     });
   }
+
+  async deleteUser(requesterId: string, targetUserId: string) {
+    if (requesterId === targetUserId) {
+      throw new ForbiddenException('Cannot delete your own account');
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+    if (!targetUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (targetUser.role === UserRole.ADMIN) {
+      const adminCount = await this.prisma.user.count({
+        where: { role: UserRole.ADMIN },
+      });
+      if (adminCount <= 1) {
+        throw new ForbiddenException('Cannot delete the last administrator');
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const articleIds = (
+        await tx.article.findMany({
+          where: { authorId: targetUserId },
+          select: { id: true },
+        })
+      ).map((a) => a.id);
+
+      const courseIds = (
+        await tx.course.findMany({
+          where: { authorId: targetUserId },
+          select: { id: true },
+        })
+      ).map((c) => c.id);
+
+      await tx.comment.deleteMany({ where: { authorId: targetUserId } });
+      await tx.moderationLog.deleteMany({ where: { moderatorId: targetUserId } });
+
+      if (articleIds.length > 0) {
+        await tx.video.deleteMany({ where: { articleId: { in: articleIds } } });
+        await tx.moderationLog.deleteMany({ where: { articleId: { in: articleIds } } });
+        await tx.courseArticle.deleteMany({ where: { articleId: { in: articleIds } } });
+        await tx.comment.deleteMany({ where: { articleId: { in: articleIds } } });
+        await tx.article.deleteMany({ where: { id: { in: articleIds } } });
+      }
+
+      if (courseIds.length > 0) {
+        await tx.courseArticle.deleteMany({ where: { courseId: { in: courseIds } } });
+        await tx.course.deleteMany({ where: { id: { in: courseIds } } });
+      }
+
+      await tx.user.delete({ where: { id: targetUserId } });
+    });
+
+    return { deleted: true };
+  }
 }

@@ -28,9 +28,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialContent, setInitialContent] = useState('');
+  const [content, setContent] = useState('');
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const editorRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -38,7 +39,12 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   }, [params]);
 
   useEffect(() => {
-    if (!user || !articleId) { if (!articleId && user) router.push('/auth/login'); return; }
+    if (authLoading) return;
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+    if (!articleId) return;
     Promise.all([
       apiFetch<any>(`/articles/${articleId}`),
       apiFetch<any[]>('/categories'),
@@ -48,13 +54,25 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setInitialContent(article.content || '');
       setCategories(cats);
     }).catch(() => setError('Не удалось загрузить статью'));
-  }, [user, router, articleId]);
+  }, [user, authLoading, router, articleId]);
 
   useEffect(() => {
     if (editorRef.current && initialContent) {
       editorRef.current.innerHTML = initialContent;
+      setContent(initialContent);
     }
   }, [initialContent]);
+
+  const syncContentFromEditor = () => {
+    const html = editorRef.current?.innerHTML || '';
+    setContent(html);
+    return html;
+  };
+
+  const switchToPreview = () => {
+    syncContentFromEditor();
+    setActiveTab('preview');
+  };
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -73,17 +91,17 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  const getEditorContent = () => editorRef.current?.innerHTML || '';
+  const getEditorContent = () => content || editorRef.current?.innerHTML || '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const content = getEditorContent();
+      const bodyContent = syncContentFromEditor();
       await apiFetch(`/articles/${articleId}`, {
         method: 'PATCH',
-        body: { title, content, categoryId },
+        body: { title, content: bodyContent, categoryId },
       });
       router.push('/articles/mine');
     } catch (err: any) {
@@ -97,10 +115,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     setError('');
     setLoading(true);
     try {
-      const content = getEditorContent();
+      const bodyContent = syncContentFromEditor();
       await apiFetch(`/articles/${articleId}`, {
         method: 'PATCH',
-        body: { title, content, categoryId },
+        body: { title, content: bodyContent, categoryId },
       });
       await apiFetch(`/articles/${articleId}/submit`, { method: 'POST' });
       router.push('/articles/mine');
@@ -166,7 +184,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               <button
                 type="button"
                 className={`btn ${activeTab === 'preview' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setActiveTab('preview')}
+                onClick={switchToPreview}
                 style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
               >
                 Предпросмотр
@@ -174,56 +192,55 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {activeTab === 'edit' && (
-            <>
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.25rem',
-                padding: '0.5rem',
-                background: '#f3f4f6',
-                borderRadius: 'var(--radius) var(--radius) 0 0',
-                borderBottom: '1px solid var(--border)',
-              }}>
-                {TOOLBAR_BUTTONS.map((btn) => (
-                  <button
-                    key={btn.label}
-                    type="button"
-                    title={btn.title}
-                    onClick={() => handleToolbarAction(btn.command, btn.value)}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      border: '1px solid var(--border)',
-                      borderRadius: '4px',
-                      background: 'white',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                style={{
-                  minHeight: '300px',
-                  padding: '1rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0 0 var(--radius) var(--radius)',
-                  outline: 'none',
-                  lineHeight: 1.8,
-                  fontSize: '0.95rem',
-                }}
-              />
-            </>
-          )}
+          <div style={{ display: activeTab === 'edit' ? 'block' : 'none' }}>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.25rem',
+              padding: '0.5rem',
+              background: '#f3f4f6',
+              borderRadius: 'var(--radius) var(--radius) 0 0',
+              borderBottom: '1px solid var(--border)',
+            }}>
+              {TOOLBAR_BUTTONS.map((btn) => (
+                <button
+                  key={btn.label}
+                  type="button"
+                  title={btn.title}
+                  onClick={() => handleToolbarAction(btn.command, btn.value)}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              style={{
+                minHeight: '300px',
+                padding: '1rem',
+                border: '1px solid var(--border)',
+                borderRadius: '0 0 var(--radius) var(--radius)',
+                outline: 'none',
+                lineHeight: 1.8,
+                fontSize: '0.95rem',
+              }}
+              onInput={syncContentFromEditor}
+            />
+          </div>
 
           {activeTab === 'preview' && (
             <div
-              dangerouslySetInnerHTML={{ __html: getEditorContent() }}
+              dangerouslySetInnerHTML={{ __html: content }}
               style={{
                 minHeight: '300px',
                 padding: '1rem',

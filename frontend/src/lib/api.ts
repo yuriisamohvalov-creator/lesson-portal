@@ -1,4 +1,30 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_PREFIX = '/api';
+
+export function getApiBase(): string {
+  // Server-side (SSR in Docker): use internal service name
+  if (typeof window === 'undefined') {
+    return (
+      process.env.API_INTERNAL_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:3001'
+    );
+  }
+  // Browser: same-origin when env is unset or still dev localhost
+  const publicUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  if (!publicUrl || /localhost|127\.0\.0\.1/.test(publicUrl)) {
+    return '';
+  }
+  return publicUrl;
+}
+
+export function apiPath(path: string): string {
+  if (path.startsWith('/api/')) return path;
+  return `${API_PREFIX}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+export function getApiUrl(path: string): string {
+  return `${getApiBase()}${apiPath(path)}`;
+}
 
 let accessToken: string | null = null;
 
@@ -16,6 +42,14 @@ interface RequestOptions {
   body?: any;
 }
 
+export function getApiErrorMessage(err: unknown, fallback = 'Ошибка'): string {
+  if (!err || typeof err !== 'object') return fallback;
+  const message = (err as { message?: string | string[] }).message;
+  if (Array.isArray(message)) return message.join(', ');
+  if (typeof message === 'string' && message.trim()) return message;
+  return fallback;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
@@ -23,15 +57,18 @@ export async function apiFetch<T>(
   const { method = 'GET', headers = {}, body, ...rest } = options;
 
   const reqHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(headers as Record<string, string>),
   };
+
+  if (body !== undefined && body !== null) {
+    reqHeaders['Content-Type'] = 'application/json';
+  }
 
   if (accessToken) {
     reqHeaders['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(getApiUrl(path), {
     method,
     headers: reqHeaders,
     body: body ? JSON.stringify(body) : undefined,
@@ -39,11 +76,11 @@ export async function apiFetch<T>(
     ...rest,
   });
 
-  if (res.status === 401 && accessToken) {
+  if (res.status === 401) {
     const refreshed = await tryRefresh();
     if (refreshed) {
       reqHeaders['Authorization'] = `Bearer ${accessToken}`;
-      const retryRes = await fetch(`${API_BASE}${path}`, {
+      const retryRes = await fetch(getApiUrl(path), {
         method,
         headers: reqHeaders,
         body: body ? JSON.stringify(body) : undefined,
@@ -54,6 +91,7 @@ export async function apiFetch<T>(
         const err = await retryRes.json().catch(() => ({ message: 'Error' }));
         throw { status: retryRes.status, ...err };
       }
+      if (retryRes.status === 204) return undefined as T;
       return retryRes.json();
     }
     setAccessToken(null);
@@ -71,7 +109,7 @@ export async function apiFetch<T>(
 
 async function tryRefresh(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
+    const res = await fetch(getApiUrl('/auth/refresh'), {
       method: 'POST',
       credentials: 'include',
     });
@@ -81,6 +119,18 @@ async function tryRefresh(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function restoreSession() {
+  const refreshed = await tryRefresh();
+  if (!refreshed) return null;
+
+  try {
+    return await getMe();
+  } catch {
+    setAccessToken(null);
+    return null;
   }
 }
 
@@ -101,7 +151,11 @@ export async function register(email: string, password: string, displayName: str
 }
 
 export async function logout() {
-  await apiFetch('/auth/logout', { method: 'POST' });
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } catch {
+    // Clear local session even if request fails (e.g. expired access token)
+  }
   setAccessToken(null);
 }
 

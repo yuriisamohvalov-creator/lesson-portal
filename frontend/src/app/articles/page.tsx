@@ -12,10 +12,10 @@ export const revalidate = 60;
 export default async function ArticlesPage({
   searchParams,
 }: {
-  searchParams: { page?: string; search?: string };
+  searchParams: Promise<{ page?: string; search?: string }>;
 }) {
-  const page = Number(searchParams.page) || 1;
-  const search = searchParams.search;
+  const { page: pageParam, search } = await searchParams;
+  const page = Number(pageParam) || 1;
   let data;
   try {
     data = await getArticles(page, search);

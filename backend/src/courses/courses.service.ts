@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService, CACHE_KEYS } from '../cache/cache.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { AddArticleToCourseDto } from './dto/add-article.dto';
@@ -14,7 +15,24 @@ import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
+
+  private buildListCacheKey(dto: ListCoursesDto) {
+    return CACHE_KEYS.coursesList(
+      JSON.stringify({
+        page: dto.page || 1,
+        limit: dto.limit || 20,
+        categoryId: dto.categoryId || '',
+      }),
+    );
+  }
+
+  private async invalidateListCache() {
+    await this.cache.invalidatePattern('courses:list:*');
+  }
 
   async create(authorId: string, dto: CreateCourseDto) {
     const existing = await this.prisma.course.findUnique({
@@ -24,19 +42,25 @@ export class CoursesService {
       throw new ConflictException('Course with this slug already exists');
     }
 
-    return this.prisma.course.create({
+    const course = await this.prisma.course.create({
       data: {
         name: dto.name,
         description: dto.description,
         slug: dto.slug,
         authorId,
-        status: 'draft',
+        status: dto.status ?? 'published',
       },
       include: { author: { select: { id: true, displayName: true } } },
     });
+    await this.invalidateListCache();
+    return course;
   }
 
   async findAllPublic(dto: ListCoursesDto) {
+    const cacheKey = this.buildListCacheKey(dto);
+    const cached = await this.cache.get(cacheKey);
+    if (cached) return cached;
+
     const page = dto.page || 1;
     const limit = dto.limit || 20;
     const skip = (page - 1) * limit;
@@ -69,7 +93,7 @@ export class CoursesService {
       this.prisma.course.count({ where }),
     ]);
 
-    return {
+    const result = {
       data: courses,
       meta: {
         total,
@@ -78,18 +102,24 @@ export class CoursesService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    await this.cache.set(cacheKey, result, 120);
+    return result;
   }
 
   async findOnePublic(id: string, user?: { id: string; role: UserRole }) {
+    const isAdmin = user?.role === UserRole.ADMIN;
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: {
         author: { select: { id: true, displayName: true } },
         articles: {
-          where: { article: { status: 'PUBLISHED' } },
+          ...(isAdmin
+            ? {}
+            : { where: { article: { status: 'PUBLISHED' } } }),
           include: {
             article: {
-              select: { id: true, title: true, slug: true, content: true },
+              select: { id: true, title: true, slug: true, content: true, status: true },
             },
           },
           orderBy: { order: 'asc' },
@@ -142,11 +172,13 @@ export class CoursesService {
       }
     }
 
-    return this.prisma.course.update({
+    const updated = await this.prisma.course.update({
       where: { id },
       data: { ...dto },
       include: { author: { select: { id: true, displayName: true } } },
     });
+    await this.invalidateListCache();
+    return updated;
   }
 
   async remove(id: string) {
@@ -156,7 +188,9 @@ export class CoursesService {
     }
 
     await this.prisma.courseArticle.deleteMany({ where: { courseId: id } });
-    return this.prisma.course.delete({ where: { id } });
+    const deleted = await this.prisma.course.delete({ where: { id } });
+    await this.invalidateListCache();
+    return deleted;
   }
 
   async addArticle(courseId: string, dto: AddArticleToCourseDto) {

@@ -37,9 +37,13 @@ export class ArticlesController {
 
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
-  findOne(@Param('id') id: string, @Req() req: any) {
+  findOne(
+    @Param('id') id: string,
+    @Query('courseId') courseId: string | undefined,
+    @Req() req: any,
+  ) {
     const user = req.user ? { id: req.user.id, role: req.user.role } : undefined;
-    return this.articlesService.findOne(id, user);
+    return this.articlesService.findOne(id, user, courseId);
   }
 
   @Post()

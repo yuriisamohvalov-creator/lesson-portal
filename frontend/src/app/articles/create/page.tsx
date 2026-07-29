@@ -1,9 +1,47 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getApiUrl, getAccessToken, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+
+const MAX_VIDEO_MB = Number(process.env.NEXT_PUBLIC_MAX_VIDEO_SIZE_MB || '5000');
+const DIRECT_UPLOAD_MAX_MB = 100;
+
+function uploadWithProgress(
+  xhr: XMLHttpRequest,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    xhr.timeout = 0;
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+      let message = `${xhr.status} ${xhr.statusText || 'Upload failed'}`;
+      try {
+        const err = JSON.parse(xhr.responseText);
+        message = err.message || message;
+      } catch {
+        if (xhr.responseText.includes('SignatureDoesNotMatch')) {
+          message = 'Ошибка подписи загрузки. Попробуйте ещё раз.';
+        }
+      }
+      if (xhr.status === 413) {
+        message = `Файл слишком большой (лимит ${MAX_VIDEO_MB >= 1024 ? `${MAX_VIDEO_MB / 1024} ГБ` : `${MAX_VIDEO_MB} МБ`})`;
+      }
+      reject(new Error(message));
+    };
+    xhr.onerror = () => reject(new Error('Соединение прервано при загрузке видео. Не закрывайте вкладку.'));
+    xhr.onabort = () => reject(new Error('Загрузка видео отменена'));
+  });
+}
 
 const TOOLBAR_BUTTONS = [
   { label: 'B', title: 'Жирный', command: 'bold' },
@@ -34,14 +72,19 @@ export default function CreateArticlePage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  const [content, setContent] = useState('');
+  const [draftId, setDraftId] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.push('/auth/login'); return; }
     apiFetch<any[]>('/categories').then(setCategories).catch(() => {});
-  }, [user, router]);
+  }, [user, authLoading, router]);
+
+  if (authLoading || !user) return <div>Загрузка...</div>;
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -60,7 +103,18 @@ export default function CreateArticlePage() {
     }
   };
 
-  const getEditorContent = () => editorRef.current?.innerHTML || '';
+  const syncContentFromEditor = () => {
+    const html = editorRef.current?.innerHTML || '';
+    setContent(html);
+    return html;
+  };
+
+  const getEditorContent = () => content || editorRef.current?.innerHTML || '';
+
+  const switchToPreview = () => {
+    syncContentFromEditor();
+    setActiveTab('preview');
+  };
 
   const uploadVideo = async (articleId: string): Promise<boolean> => {
     if (videoTab === 'youtube' && youtubeUrl.trim()) {
@@ -72,45 +126,54 @@ export default function CreateArticlePage() {
     }
 
     if (videoTab === 'upload' && videoFile) {
+      if (videoFile.size > MAX_VIDEO_MB * 1024 * 1024) {
+        throw new Error(`Файл слишком большой. Максимум ${MAX_VIDEO_MB >= 1024 ? `${MAX_VIDEO_MB / 1024} ГБ` : `${MAX_VIDEO_MB} МБ`}`);
+      }
+
       setUploading(true);
       setUploadProgress(0);
       try {
-        const { uploadUrl, s3Key } = await apiFetch<any>(
-          `/articles/${articleId}/videos/upload-url`,
-          {
-            method: 'POST',
-            body: {
-              fileName: videoFile.name,
-              fileSize: videoFile.size,
-              contentType: videoFile.type || 'video/mp4',
-            },
-          },
-        );
+        const usePresigned = videoFile.size > DIRECT_UPLOAD_MAX_MB * 1024 * 1024;
 
-        await new Promise<void>((resolve, reject) => {
+        if (usePresigned) {
+          const { uploadUrl, s3Key } = await apiFetch<any>(
+            `/articles/${articleId}/videos/upload-url`,
+            {
+              method: 'POST',
+              body: {
+                fileName: videoFile.name,
+                fileSize: videoFile.size,
+                contentType: videoFile.type || 'video/mp4',
+              },
+            },
+          );
+
           const xhr = new XMLHttpRequest();
           xhr.open('PUT', uploadUrl, true);
           xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4');
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              setUploadProgress(Math.round((event.loaded / event.total) * 100));
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve();
-            } else {
-              reject(new Error(`Upload failed: ${xhr.statusText}`));
-            }
-          };
-          xhr.onerror = () => reject(new Error('Upload failed'));
+          const uploadPromise = uploadWithProgress(xhr, setUploadProgress);
           xhr.send(videoFile);
-        });
+          await uploadPromise;
 
-        await apiFetch(`/articles/${articleId}/videos/confirm`, {
-          method: 'POST',
-          body: { s3Key, contentType: videoFile.type || 'video/mp4' },
-        });
+          await apiFetch(`/articles/${articleId}/videos/confirm`, {
+            method: 'POST',
+            body: { s3Key, contentType: videoFile.type || 'video/mp4' },
+          });
+        } else {
+          const formData = new FormData();
+          formData.append('file', videoFile);
+
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', getApiUrl(`/articles/${articleId}/videos/upload`));
+          const token = getAccessToken();
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          }
+          xhr.withCredentials = true;
+          const uploadPromise = uploadWithProgress(xhr, setUploadProgress);
+          xhr.send(formData);
+          await uploadPromise;
+        }
         return true;
       } finally {
         setUploading(false);
@@ -120,26 +183,41 @@ export default function CreateArticlePage() {
     return false;
   };
 
+  const persistArticle = async (): Promise<string> => {
+    const articleContent = syncContentFromEditor();
+
+    if (draftId) {
+      await apiFetch(`/articles/${draftId}`, {
+        method: 'PATCH',
+        body: { title, content: articleContent, categoryId },
+      });
+      return draftId;
+    }
+
+    const result = await apiFetch<any>('/articles', {
+      method: 'POST',
+      body: { title, content: articleContent, categoryId },
+    });
+    setDraftId(result.id);
+    return result.id;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const content = getEditorContent();
-      const result = await apiFetch<any>('/articles', {
-        method: 'POST',
-        body: { title, content, categoryId },
-      });
-      if (result.id) {
-        try {
-          await uploadVideo(result.id);
-        } catch {
-          // video attachment is optional, continue to article list
-        }
+      const articleId = await persistArticle();
+      try {
+        await uploadVideo(articleId);
+      } catch (videoErr: unknown) {
+        setError(`Статья сохранена, но видео не загружено: ${getApiErrorMessage(videoErr, 'ошибка загрузки')}`);
+        return;
       }
+      await apiFetch(`/articles/${articleId}/submit`, { method: 'POST' });
       router.push('/articles/mine');
-    } catch (err: any) {
-      setError(err.message || 'Ошибка создания');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Ошибка создания'));
     } finally {
       setLoading(false);
     }
@@ -149,21 +227,16 @@ export default function CreateArticlePage() {
     setError('');
     setLoading(true);
     try {
-      const content = getEditorContent();
-      const result = await apiFetch<any>('/articles', {
-        method: 'POST',
-        body: { title, content, categoryId },
-      });
-      if (result.id) {
-        try {
-          await uploadVideo(result.id);
-        } catch {
-          // video attachment is optional
-        }
+      const articleId = await persistArticle();
+      try {
+        await uploadVideo(articleId);
+      } catch (videoErr: unknown) {
+        setError(`Черновик сохранён, но видео не загружено: ${getApiErrorMessage(videoErr, 'ошибка загрузки')}`);
+        return;
       }
       router.push('/articles/mine');
-    } catch (err: any) {
-      setError(err.message || 'Ошибка сохранения');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Ошибка сохранения'));
     } finally {
       setLoading(false);
     }
@@ -225,7 +298,7 @@ export default function CreateArticlePage() {
               <button
                 type="button"
                 className={`btn ${activeTab === 'preview' ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setActiveTab('preview')}
+                onClick={switchToPreview}
                 style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
               >
                 Предпросмотр
@@ -233,58 +306,56 @@ export default function CreateArticlePage() {
             </div>
           </div>
 
-          {activeTab === 'edit' && (
-            <>
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.25rem',
-                padding: '0.5rem',
-                background: '#f3f4f6',
-                borderRadius: 'var(--radius) var(--radius) 0 0',
-                borderBottom: '1px solid var(--border)',
-              }}>
-                {TOOLBAR_BUTTONS.map((btn) => (
-                  <button
-                    key={btn.label}
-                    type="button"
-                    title={btn.title}
-                    onClick={() => handleToolbarAction(btn.command, btn.value)}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      border: '1px solid var(--border)',
-                      borderRadius: '4px',
-                      background: 'white',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      fontWeight: btn.command.startsWith('formatBlock') ? 700 : 400,
-                    }}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                style={{
-                  minHeight: '300px',
-                  padding: '1rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0 0 var(--radius) var(--radius)',
-                  outline: 'none',
-                  lineHeight: 1.8,
-                  fontSize: '0.95rem',
-                }}
-                onInput={() => {}}
-              />
-            </>
-          )}
+          <div style={{ display: activeTab === 'edit' ? 'block' : 'none' }}>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.25rem',
+              padding: '0.5rem',
+              background: '#f3f4f6',
+              borderRadius: 'var(--radius) var(--radius) 0 0',
+              borderBottom: '1px solid var(--border)',
+            }}>
+              {TOOLBAR_BUTTONS.map((btn) => (
+                <button
+                  key={btn.label}
+                  type="button"
+                  title={btn.title}
+                  onClick={() => handleToolbarAction(btn.command, btn.value)}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: btn.command.startsWith('formatBlock') ? 700 : 400,
+                  }}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              style={{
+                minHeight: '300px',
+                padding: '1rem',
+                border: '1px solid var(--border)',
+                borderRadius: '0 0 var(--radius) var(--radius)',
+                outline: 'none',
+                lineHeight: 1.8,
+                fontSize: '0.95rem',
+              }}
+              onInput={syncContentFromEditor}
+            />
+          </div>
 
           {activeTab === 'preview' && (
             <div
-              dangerouslySetInnerHTML={{ __html: getEditorContent() }}
+              dangerouslySetInnerHTML={{ __html: content }}
               style={{
                 minHeight: '300px',
                 padding: '1rem',
@@ -355,7 +426,7 @@ export default function CreateArticlePage() {
                     style={{ width: '100%' }}
                   />
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    Допустимые форматы: MP4, WebM. Максимальный размер: 500 МБ.
+                    Допустимые форматы: MP4, WebM. Максимальный размер: {MAX_VIDEO_MB >= 1024 ? `${MAX_VIDEO_MB / 1024} ГБ` : `${MAX_VIDEO_MB} МБ`}.
                   </p>
                   {uploading && (
                     <div style={{ marginTop: '0.75rem' }}>

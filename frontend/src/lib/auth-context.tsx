@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getMe, setAccessToken as setToken, getAccessToken } from '@/lib/api';
+import { restoreSession } from '@/lib/api';
 
 interface User {
   id: string;
@@ -27,17 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const data = await getMe();
-        setUser(data);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadUser();
+    restoreSession()
+      .then(setUser)
+      .finally(() => setLoading(false));
   }, []);
 
   return (

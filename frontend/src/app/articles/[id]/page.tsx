@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiFetch, getAccessToken } from '@/lib/api';
+import { useSearchParams } from 'next/navigation';
+import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Comments } from '@/components/Comments';
+import { UploadedVideo } from '@/components/UploadedVideo';
+import { CourseArticleNav } from '@/components/CourseArticleNav';
 
 function YouTubeEmbed({ url }: { url: string }) {
   const embedUrl = url
@@ -32,6 +35,8 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   const [deleting, setDeleting] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get('course');
 
   useEffect(() => {
     params.then(({ id }) => setArticleId(id));
@@ -39,11 +44,27 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => {
     if (!articleId) return;
-    apiFetch<any>(`/articles/${articleId}`)
+    const query = courseId ? `?courseId=${encodeURIComponent(courseId)}` : '';
+    apiFetch<any>(`/articles/${articleId}${query}`)
       .then(setArticle)
       .catch(() => setError('not-found'))
       .finally(() => setLoading(false));
-  }, [articleId]);
+  }, [articleId, courseId]);
+
+  useEffect(() => {
+    if (!articleId || !article?.videos?.some(
+      (v: any) => v.type === 'UPLOADED' && v.processStatus === 'pending',
+    )) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const query = courseId ? `?courseId=${encodeURIComponent(courseId)}` : '';
+      apiFetch<any>(`/articles/${articleId}${query}`).then(setArticle).catch(() => {});
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, [articleId, courseId, article?.videos]);
 
   const isAuthor = user && article && user.id === article.authorId;
   const canEdit = isAuthor && article && (article.status === 'DRAFT' || article.status === 'REJECTED');
@@ -54,8 +75,8 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
     try {
       await apiFetch(`/articles/${articleId}`, { method: 'DELETE' });
       router.push('/articles/mine');
-    } catch (err: any) {
-      alert(err.message || 'Ошибка удаления');
+    } catch (err: unknown) {
+      alert(getApiErrorMessage(err, 'Ошибка удаления'));
     } finally {
       setDeleting(false);
     }
@@ -76,19 +97,34 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
       {/* Breadcrumb */}
       <nav style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
         <Link href="/" style={{ color: 'var(--text-muted)' }}>Главная</Link>
-        {' / '}
-        <Link href="/articles" style={{ color: 'var(--text-muted)' }}>Статьи</Link>
-        {article.category && (
+        {article.courseNav ? (
           <>
             {' / '}
-            <Link href={`/categories/${article.category.id}`} style={{ color: 'var(--text-muted)' }}>
-              {article.category.name}
+            <Link href="/courses" style={{ color: 'var(--text-muted)' }}>Курсы</Link>
+            {' / '}
+            <Link href={`/courses/${article.courseNav.course.id}`} style={{ color: 'var(--text-muted)' }}>
+              {article.courseNav.course.name}
             </Link>
+          </>
+        ) : (
+          <>
+            {' / '}
+            <Link href="/articles" style={{ color: 'var(--text-muted)' }}>Статьи</Link>
+            {article.category && (
+              <>
+                {' / '}
+                <Link href={`/categories/${article.category.id}`} style={{ color: 'var(--text-muted)' }}>
+                  {article.category.name}
+                </Link>
+              </>
+            )}
           </>
         )}
         {' / '}
         <span style={{ color: 'var(--text)' }}>{article.title}</span>
       </nav>
+
+      {article.courseNav && <CourseArticleNav courseNav={article.courseNav} />}
 
       {/* Author actions */}
       {isAuthor && (
@@ -189,11 +225,12 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
               {video.type === 'YOUTUBE' && video.youtubeUrl && (
                 <YouTubeEmbed url={video.youtubeUrl} />
               )}
-              {video.type === 'UPLOADED' && video.s3Key && (
-                <video controls style={{ width: '100%', borderRadius: 'var(--radius)', background: '#000' }}>
-                  <source src={`/api/videos/${video.id}/stream`} />
-                  Ваш браузер не поддерживает воспроизведение видео.
-                </video>
+              {video.type === 'UPLOADED' && (
+                <UploadedVideo
+                  videoId={video.id}
+                  url={video.url}
+                  processStatus={video.processStatus}
+                />
               )}
             </div>
           ))}
@@ -201,6 +238,8 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
       )}
 
       {/* Author info */}
+      {article.courseNav && <CourseArticleNav courseNav={article.courseNav} />}
+
       <div style={{
         marginTop: '3rem',
         paddingTop: '2rem',

@@ -17,6 +17,10 @@ async function bootstrap() {
     }),
   );
 
+  app.setGlobalPrefix('api', {
+    exclude: ['health'],
+  });
+
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3002',
     credentials: true,
@@ -37,7 +41,7 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);

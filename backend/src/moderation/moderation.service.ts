@@ -4,13 +4,22 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import { ModerationQueueDto } from './dto/moderation-queue.dto';
 import { RejectArticleDto } from './dto/reject-article.dto';
 import { UserRole, ArticleStatus, ModerationAction } from '@prisma/client';
 
 @Injectable()
 export class ModerationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
+
+  private async invalidateArticleCaches() {
+    await this.cache.invalidatePattern('articles:list:*');
+    await this.cache.del('categories:all');
+  }
 
   async getQueue(dto: ModerationQueueDto) {
     const page = dto.page || 1;
@@ -79,6 +88,7 @@ export class ModerationService {
       }),
     ]);
 
+    await this.invalidateArticleCaches();
     return updatedArticle;
   }
 
@@ -117,6 +127,7 @@ export class ModerationService {
       }),
     ]);
 
+    await this.invalidateArticleCaches();
     return updatedArticle;
   }
 
