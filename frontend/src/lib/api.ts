@@ -162,3 +162,22 @@ export async function logout() {
 export async function getMe() {
   return apiFetch<any>('/users/me');
 }
+
+export async function importPdf(file: File): Promise<{ text: string; html: string; metadata: any }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(getApiUrl('/pdf-import'), {
+    method: 'POST',
+    headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
+    body: formData,
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Error' }));
+    throw { status: res.status, ...err };
+  }
+
+  return res.json();
+}

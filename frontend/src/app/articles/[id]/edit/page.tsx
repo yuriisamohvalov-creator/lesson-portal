@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, importPdf } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 
@@ -30,7 +30,9 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   const [initialContent, setInitialContent] = useState('');
   const [content, setContent] = useState('');
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  const [pdfImporting, setPdfImporting] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -92,6 +94,38 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   };
 
   const getEditorContent = () => content || editorRef.current?.innerHTML || '';
+
+  const handlePdfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      setError('Файл должен быть в формате PDF');
+      return;
+    }
+
+    setPdfImporting(true);
+    setError('');
+    try {
+      const result = await importPdf(file);
+      
+      if (editorRef.current) {
+        editorRef.current.innerHTML = result.html;
+        setContent(result.html);
+      } else {
+        setContent(result.html);
+      }
+      
+      setActiveTab('edit');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка импорта PDF');
+    } finally {
+      setPdfImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
