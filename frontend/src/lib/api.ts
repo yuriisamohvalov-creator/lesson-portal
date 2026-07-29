@@ -9,8 +9,12 @@ export function getApiBase(): string {
       'http://localhost:3001'
     );
   }
-  // Browser: use configured public API URL, falling back to same-origin
-  return process.env.NEXT_PUBLIC_API_URL || '';
+  // Browser: same-origin when env is unset or still dev localhost
+  const publicUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  if (!publicUrl || /localhost|127\.0\.0\.1/.test(publicUrl)) {
+    return '';
+  }
+  return publicUrl;
 }
 
 export function apiPath(path: string): string {

@@ -46,5 +46,7 @@ export async function createArticle(
 }
 
 export async function logout(page: Page): Promise<void> {
-  await page.goto('/auth/logout');
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Выйти' }).click();
+  await page.getByRole('link', { name: 'Войти' }).waitFor();
 }

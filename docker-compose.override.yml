@@ -30,7 +30,6 @@ services:
       - "9229:9229"
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost:3001
       NODE_OPTIONS: "--max-old-space-size=768"
       THROTTLE_AUTH_LIMIT: 1000
     volumes:
@@ -52,8 +51,8 @@ services:
     ports:
       - "3002:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
       API_INTERNAL_URL: http://backend:3001
     volumes:
       - ./frontend/src:/app/src
+      - ./frontend/next.config.js:/app/next.config.js
       - ./frontend/node_modules:/app/node_modules
