@@ -4,5 +4,7 @@ node_modules/
 docker-compose.release.yml
 dist/
 .next/
+frontend/test-results/
+frontend/playwright-report/
 *.log
 minio_data/
