@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import { PdfImportButton } from '@/components/PdfImportButton';
 
 const TOOLBAR_BUTTONS = [
   { label: 'B', title: 'Жирный', command: 'bold' },
@@ -93,6 +94,17 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
 
   const getEditorContent = () => content || editorRef.current?.innerHTML || '';
 
+  const applyPdfImport = ({ html, suggestedTitle }: { html: string; suggestedTitle?: string }) => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = html;
+    }
+    setContent(html);
+    if (suggestedTitle && !title.trim()) {
+      setTitle(suggestedTitle);
+    }
+    setActiveTab('edit');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -104,8 +116,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         body: { title, content: bodyContent, categoryId },
       });
       router.push('/articles/mine');
-    } catch (err: any) {
-      setError(err.message || 'Ошибка сохранения');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Ошибка сохранения'));
     } finally {
       setLoading(false);
     }
@@ -122,8 +134,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       });
       await apiFetch(`/articles/${articleId}/submit`, { method: 'POST' });
       router.push('/articles/mine');
-    } catch (err: any) {
-      setError(err.message || 'Ошибка отправки');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Ошибка отправки'));
     } finally {
       setLoading(false);
     }
@@ -172,7 +184,13 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Содержание</label>
-            <div style={{ display: 'flex', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+              <PdfImportButton
+                disabled={loading}
+                hasExistingContent={Boolean(getEditorContent().replace(/<[^>]*>/g, '').trim())}
+                onImported={applyPdfImport}
+                onError={setError}
+              />
               <button
                 type="button"
                 className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}

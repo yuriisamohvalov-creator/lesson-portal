@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { apiFetch, getApiUrl, getAccessToken, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
+import { PdfImportButton } from '@/components/PdfImportButton';
 
 const MAX_VIDEO_MB = Number(process.env.NEXT_PUBLIC_MAX_VIDEO_SIZE_MB || '5000');
 const DIRECT_UPLOAD_MAX_MB = 100;
@@ -110,6 +111,17 @@ export default function CreateArticlePage() {
   };
 
   const getEditorContent = () => content || editorRef.current?.innerHTML || '';
+
+  const applyPdfImport = ({ html, suggestedTitle }: { html: string; suggestedTitle?: string }) => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = html;
+    }
+    setContent(html);
+    if (suggestedTitle && !title.trim()) {
+      setTitle(suggestedTitle);
+    }
+    setActiveTab('edit');
+  };
 
   const switchToPreview = () => {
     syncContentFromEditor();
@@ -286,7 +298,13 @@ export default function CreateArticlePage() {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Содержание</label>
-            <div style={{ display: 'flex', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+              <PdfImportButton
+                disabled={loading || uploading}
+                hasExistingContent={Boolean(getEditorContent().replace(/<[^>]*>/g, '').trim())}
+                onImported={applyPdfImport}
+                onError={setError}
+              />
               <button
                 type="button"
                 className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}

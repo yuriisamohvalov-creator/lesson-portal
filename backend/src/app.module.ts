@@ -13,6 +13,7 @@ import { ModerationModule } from './moderation/moderation.module';
 import { AdminModule } from './admin/admin.module';
 import { CommentsModule } from './comments/comments.module';
 import { VideosModule } from './videos/videos.module';
+import { PdfImportModule } from './pdf-import/pdf-import.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -37,6 +38,7 @@ import { AppService } from './app.service';
     AdminModule,
     CommentsModule,
     VideosModule,
+    PdfImportModule,
   ],
   controllers: [AppController],
   providers: [

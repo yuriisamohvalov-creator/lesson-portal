@@ -162,3 +162,51 @@ export async function logout() {
 export async function getMe() {
   return apiFetch<any>('/users/me');
 }
+
+export interface PdfImportResponse {
+  text: string;
+  html: string;
+  suggestedTitle?: string;
+  metadata?: {
+    pageCount: number;
+    version?: string;
+  };
+}
+
+export async function importPdf(file: File): Promise<PdfImportResponse> {
+  const doFetch = () => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const headers: Record<string, string> = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    return fetch(getApiUrl('/pdf-import'), {
+      method: 'POST',
+      headers,
+      body: formData,
+      credentials: 'include',
+    });
+  };
+
+  let res = await doFetch();
+
+  if (res.status === 401) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      res = await doFetch();
+    } else {
+      setAccessToken(null);
+      throw { status: 401, message: 'Unauthorized' };
+    }
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Error' }));
+    throw { status: res.status, ...err };
+  }
+
+  return res.json();
+}
