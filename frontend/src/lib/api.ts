@@ -9,8 +9,12 @@ export function getApiBase(): string {
       'http://localhost:3001'
     );
   }
-  // Browser: use public URL
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  // Browser: same-origin when env is unset or still dev localhost
+  const publicUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  if (!publicUrl || /localhost|127\.0\.0\.1/.test(publicUrl)) {
+    return '';
+  }
+  return publicUrl;
 }
 
 export function apiPath(path: string): string {
@@ -38,6 +42,14 @@ interface RequestOptions {
   body?: any;
 }
 
+export function getApiErrorMessage(err: unknown, fallback = 'Ошибка'): string {
+  if (!err || typeof err !== 'object') return fallback;
+  const message = (err as { message?: string | string[] }).message;
+  if (Array.isArray(message)) return message.join(', ');
+  if (typeof message === 'string' && message.trim()) return message;
+  return fallback;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
@@ -45,9 +57,12 @@ export async function apiFetch<T>(
   const { method = 'GET', headers = {}, body, ...rest } = options;
 
   const reqHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(headers as Record<string, string>),
   };
+
+  if (body !== undefined && body !== null) {
+    reqHeaders['Content-Type'] = 'application/json';
+  }
 
   if (accessToken) {
     reqHeaders['Authorization'] = `Bearer ${accessToken}`;

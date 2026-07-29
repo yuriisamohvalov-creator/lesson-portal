@@ -5,6 +5,10 @@ services:
 
   minio:
     restart: always
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-3072}:9000"
+    environment:
+      MINIO_SERVER_URL: ${MINIO_PUBLIC_ENDPOINT:-http://127.0.0.1:3072}
 
   redis:
     restart: always
@@ -29,6 +33,7 @@ services:
       target: runner
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://lessons.samoh.ru}
+        NEXT_PUBLIC_MAX_VIDEO_SIZE_MB: ${MAX_VIDEO_SIZE_MB:-5000}
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://lessons.samoh.ru}

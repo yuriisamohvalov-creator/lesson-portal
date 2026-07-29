@@ -8,7 +8,15 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { tmpdir } from 'os';
+import { extname } from 'path';
+import { randomUUID } from 'crypto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VideosService } from './videos.service';
 import { CreateYouTubeVideoDto } from './dto/create-youtube-video.dto';
@@ -51,6 +59,43 @@ export class VideosController {
       req.user.id,
       req.user.role,
       dto,
+    );
+  }
+
+  @Post('upload')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: tmpdir(),
+        filename: (_req, file, cb) => {
+          cb(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`);
+        },
+      }),
+      limits: { fileSize: Number(process.env.MAX_VIDEO_SIZE_MB || '500') * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ext = extname(file.originalname).toLowerCase();
+        if (['.mp4', '.webm'].includes(ext)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Only .mp4 and .webm files are allowed'), false);
+        }
+      },
+    }),
+  )
+  uploadFile(
+    @Param('articleId') articleId: string,
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Video file is required');
+    }
+    return this.videosService.uploadFile(
+      articleId,
+      req.user.id,
+      req.user.role,
+      file,
     );
   }
 

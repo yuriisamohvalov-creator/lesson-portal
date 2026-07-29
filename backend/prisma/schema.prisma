@@ -105,7 +105,7 @@ model CourseArticle {
   order     Int
 
   course  Course  @relation(fields: [courseId], references: [id])
-  article Article @relation(fields: [articleId], references: [id])
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, articleId])
   @@map("course_articles")
@@ -122,7 +122,7 @@ model Video {
   processStatus String    @default("pending") @map("process_status")
   createdAt     DateTime  @default(now()) @map("created_at")
 
-  article Article @relation(fields: [articleId], references: [id])
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@map("videos")
 }
@@ -135,7 +135,7 @@ model ModerationLog {
   comment     String?
   createdAt   DateTime         @default(now()) @map("created_at")
 
-  article   Article @relation(fields: [articleId], references: [id])
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
   moderator User    @relation(fields: [moderatorId], references: [id])
 
   @@map("moderation_logs")

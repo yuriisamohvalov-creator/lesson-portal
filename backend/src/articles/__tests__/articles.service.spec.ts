@@ -19,6 +19,7 @@ describe('ArticlesService', () => {
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn(async (ops) => Promise.all(ops)),
       article: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -33,6 +34,13 @@ describe('ArticlesService', () => {
       },
       moderationLog: {
         findMany: jest.fn(),
+        deleteMany: jest.fn(),
+      },
+      video: {
+        deleteMany: jest.fn(),
+      },
+      courseArticle: {
+        deleteMany: jest.fn(),
       },
     };
 
@@ -140,6 +148,35 @@ describe('ArticlesService', () => {
       });
       await expect(
         service.submit('1', 'userId', UserRole.USER),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('remove', () => {
+    it('should delete related records before removing the article', async () => {
+      prisma.article.findUnique.mockResolvedValue({
+        id: '1',
+        authorId: 'userId',
+        status: ArticleStatus.DRAFT,
+      });
+      prisma.$transaction = jest.fn(async (ops) => Promise.all(ops));
+
+      await service.remove('1', 'userId', UserRole.USER);
+
+      expect(prisma.moderationLog.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
+      expect(prisma.video.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
+      expect(prisma.courseArticle.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
+      expect(prisma.article.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+    });
+
+    it('should throw ConflictException for non-deletable status', async () => {
+      prisma.article.findUnique.mockResolvedValue({
+        id: '1',
+        authorId: 'userId',
+        status: ArticleStatus.PUBLISHED,
+      });
+      await expect(
+        service.remove('1', 'userId', UserRole.USER),
       ).rejects.toThrow(ConflictException);
     });
   });

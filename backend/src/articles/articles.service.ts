@@ -37,12 +37,14 @@ export class ArticlesService {
   }
 
   private generateSlug(title: string): string {
-    return title
+    const slug = title
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
+
+    return slug || 'article';
   }
 
   private async ensureUniqueSlug(slug: string, excludeId?: string): Promise<string> {
@@ -315,6 +317,15 @@ export class ArticlesService {
       throw new ConflictException('Cannot delete article in current status');
     }
 
-    return this.prisma.article.delete({ where: { id } });
+    await this.prisma.$transaction([
+      this.prisma.moderationLog.deleteMany({ where: { articleId: id } }),
+      this.prisma.video.deleteMany({ where: { articleId: id } }),
+      this.prisma.courseArticle.deleteMany({ where: { articleId: id } }),
+      this.prisma.article.delete({ where: { id } }),
+    ]);
+
+    await this.invalidatePublicListCache();
+
+    return { success: true };
   }
 }

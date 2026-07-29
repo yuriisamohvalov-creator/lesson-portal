@@ -14,31 +14,43 @@ import { ConfirmVideoDto } from './dto/confirm-video.dto';
 import { UserRole, VideoType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
+import { createReadStream } from 'fs';
+import { unlink } from 'fs/promises';
 
-const UPLOAD_EXPIRES_IN = 15 * 60; // 15 minutes
+const UPLOAD_EXPIRES_IN = 2 * 60 * 60; // 2 hours for large files
 const STREAM_EXPIRES_IN = 15 * 60; // 15 minutes
 const ALLOWED_EXTENSIONS = ['.mp4', '.webm'];
 
 @Injectable()
 export class VideosService {
   private readonly s3: S3Client;
+  private readonly presignS3: S3Client;
   private readonly bucket: string;
-  private readonly publicEndpoint: string | undefined;
   private readonly maxSizeBytes: number;
 
   constructor(private readonly prisma: PrismaService) {
     this.bucket = process.env.MINIO_BUCKET || 'lessons-videos';
-    this.publicEndpoint = process.env.MINIO_PUBLIC_ENDPOINT;
     const maxSizeMb = Number(process.env.MAX_VIDEO_SIZE_MB || '500');
     this.maxSizeBytes = maxSizeMb * 1024 * 1024;
 
+    const credentials = {
+      accessKeyId: process.env.MINIO_ROOT_USER || '',
+      secretAccessKey: process.env.MINIO_ROOT_PASSWORD || '',
+    };
+    const region = process.env.MINIO_REGION || 'us-east-1';
+
     this.s3 = new S3Client({
       endpoint: process.env.MINIO_ENDPOINT,
-      region: process.env.MINIO_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.MINIO_ROOT_USER || '',
-        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || '',
-      },
+      region,
+      credentials,
+      forcePathStyle: true,
+    });
+
+    // Presigned URLs use the public site origin; nginx proxies /lessons-videos/ to MinIO
+    this.presignS3 = new S3Client({
+      endpoint: process.env.MINIO_PUBLIC_ENDPOINT || process.env.MINIO_ENDPOINT,
+      region,
+      credentials,
       forcePathStyle: true,
     });
   }
@@ -106,16 +118,12 @@ export class VideosService {
         ContentLength: dto.fileSize,
       });
 
-      const signedUrl = await getSignedUrl(this.s3, command, {
+      const signedUrl = await getSignedUrl(this.presignS3, command, {
         expiresIn: UPLOAD_EXPIRES_IN,
       });
 
-      const publicUrl = this.publicEndpoint
-        ? this.replaceEndpoint(signedUrl, this.publicEndpoint)
-        : signedUrl;
-
       return {
-        uploadUrl: publicUrl,
+        uploadUrl: signedUrl,
         s3Key: key,
         expiresIn: UPLOAD_EXPIRES_IN,
       };
@@ -141,6 +149,55 @@ export class VideosService {
         processStatus: 'pending',
       },
     });
+  }
+
+  async uploadFile(
+    articleId: string,
+    userId: string,
+    userRole: UserRole,
+    file: Express.Multer.File,
+  ) {
+    await this.getArticleAndCheckOwnership(articleId, userId, userRole);
+
+    const ext = extname(file.originalname).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      throw new BadRequestException('Only .mp4 and .webm files are allowed');
+    }
+
+    if (file.size > this.maxSizeBytes) {
+      throw new BadRequestException(
+        `File size exceeds maximum allowed size of ${process.env.MAX_VIDEO_SIZE_MB || '500'} MB`,
+      );
+    }
+
+    const key = `uploads/${articleId}/${randomUUID()}${ext}`;
+    const contentType = file.mimetype || 'video/mp4';
+
+    try {
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: createReadStream(file.path),
+          ContentType: contentType,
+          ContentLength: file.size,
+        }),
+      );
+
+      return this.prisma.video.create({
+        data: {
+          articleId,
+          type: VideoType.UPLOADED,
+          s3Key: key,
+          s3Bucket: this.bucket,
+          processStatus: 'ready',
+        },
+      });
+    } catch {
+      throw new InternalServerErrorException('Failed to upload video');
+    } finally {
+      await unlink(file.path).catch(() => undefined);
+    }
   }
 
   getS3Client() {
@@ -195,27 +252,13 @@ export class VideosService {
         Key: s3Key,
       });
 
-      const signedUrl = await getSignedUrl(this.s3, command, {
+      const signedUrl = await getSignedUrl(this.presignS3, command, {
         expiresIn: STREAM_EXPIRES_IN,
       });
 
-      return this.publicEndpoint
-        ? this.replaceEndpoint(signedUrl, this.publicEndpoint)
-        : signedUrl;
+      return signedUrl;
     } catch {
       throw new InternalServerErrorException('Failed to generate stream URL');
-    }
-  }
-
-  private replaceEndpoint(url: string, publicEndpoint: string): string {
-    try {
-      const parsed = new URL(url);
-      const publicUrl = new URL(publicEndpoint);
-      parsed.protocol = publicUrl.protocol;
-      parsed.host = publicUrl.host;
-      return parsed.toString();
-    } catch {
-      return url;
     }
   }
 }

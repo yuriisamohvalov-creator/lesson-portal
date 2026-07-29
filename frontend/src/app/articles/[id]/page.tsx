@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -69,8 +69,8 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
     try {
       await apiFetch(`/articles/${articleId}`, { method: 'DELETE' });
       router.push('/articles/mine');
-    } catch (err: any) {
-      alert(err.message || 'Ошибка удаления');
+    } catch (err: unknown) {
+      alert(getApiErrorMessage(err, 'Ошибка удаления'));
     } finally {
       setDeleting(false);
     }

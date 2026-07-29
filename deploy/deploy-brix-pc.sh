@@ -18,6 +18,12 @@ fi
 
 cd "$PROJECT_DIR"
 
+set -a
+# shellcheck disable=SC1091
+source "$PROJECT_DIR/.env"
+set +a
+mkdir -p "${MINIO_DATA_DIR:-minio_data}"
+
 echo "=== Building images ==="
 $COMPOSE build --pull
 

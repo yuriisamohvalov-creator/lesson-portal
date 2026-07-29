@@ -24,7 +24,8 @@ mkdir -p ~/service/lessons-portal
 cd ~/service/lessons-portal
 git clone git@github.com:yuriisamohvalov-creator/lesson-portal.git .
 cp .env.production.example .env
-# Отредактируйте .env — пароли и JWT-секреты
+# Отредактируйте .env — пароли, JWT-секреты, MINIO_DATA_DIR
+mkdir -p "$(grep '^MINIO_DATA_DIR=' .env | cut -d= -f2-)"
 nano .env
 ```
 
@@ -99,6 +100,22 @@ curl -I https://lessons.samoh.ru/
 | user@test.com | testpass123 | USER |
 | moderator@test.com | testpass123 | MODERATOR |
 | admin@test.com | testpass123 | ADMIN |
+
+## MinIO: каталог данных
+
+Путь на хосте задаётся переменной **`MINIO_DATA_DIR`** в `.env` (монтируется в контейнер как `/data`).
+
+Если MinIO раньше использовал Docker volume `minio_data`, перенесите данные один раз:
+
+```bash
+MINIO_DIR="$(grep '^MINIO_DATA_DIR=' .env | cut -d= -f2-)"
+mkdir -p "$MINIO_DIR"
+docker run --rm \
+  -v lessons-portal_minio_data:/from \
+  -v "$MINIO_DIR":/to \
+  alpine sh -c "cp -a /from/. /to/"
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate minio
+```
 
 ## Обновление
 
