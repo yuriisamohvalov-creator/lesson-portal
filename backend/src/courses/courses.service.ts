@@ -48,7 +48,7 @@ export class CoursesService {
         description: dto.description,
         slug: dto.slug,
         authorId,
-        status: 'draft',
+        status: dto.status ?? 'published',
       },
       include: { author: { select: { id: true, displayName: true } } },
     });

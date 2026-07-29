@@ -14,6 +14,9 @@ export default async function CoursesPage() {
   return (
     <div>
       <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Курсы</h1>
+      {data.data.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)' }}>Пока нет опубликованных курсов.</p>
+      ) : (
       <div className="grid grid-3">
         {data.data.map((course: any) => (
           <Link key={course.id} href={`/courses/${course.id}`} style={{ textDecoration: 'none' }}>
@@ -27,6 +30,7 @@ export default async function CoursesPage() {
           </Link>
         ))}
       </div>
+      )}
     </div>
   );
 }

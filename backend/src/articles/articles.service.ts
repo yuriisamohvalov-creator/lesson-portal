@@ -190,7 +190,89 @@ export class ArticlesService {
     });
   }
 
-  async findOne(id: string, user?: { id: string; role: UserRole }) {
+  private async buildCourseNav(
+    articleId: string,
+    courseId: string | undefined,
+    user?: { id: string; role: UserRole },
+  ) {
+    const isPrivileged =
+      user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
+
+    const memberships = await this.prisma.courseArticle.findMany({
+      where: { articleId },
+      include: {
+        course: { select: { id: true, name: true, status: true } },
+      },
+    });
+
+    const publishedCourses = memberships.filter(
+      (membership) => membership.course.status === 'published',
+    );
+    if (publishedCourses.length === 0) {
+      return null;
+    }
+
+    let selected = publishedCourses[0];
+    if (courseId) {
+      const match = publishedCourses.find(
+        (membership) => membership.courseId === courseId,
+      );
+      if (match) {
+        selected = match;
+      }
+    }
+
+    const courseArticles = await this.prisma.courseArticle.findMany({
+      where: {
+        courseId: selected.courseId,
+        ...(isPrivileged
+          ? {}
+          : { article: { status: ArticleStatus.PUBLISHED } }),
+      },
+      orderBy: { order: 'asc' },
+      include: {
+        article: { select: { id: true, title: true, status: true } },
+      },
+    });
+
+    const visible = isPrivileged
+      ? courseArticles
+      : courseArticles.filter(
+          (entry) => entry.article.status === ArticleStatus.PUBLISHED,
+        );
+
+    const index = visible.findIndex((entry) => entry.articleId === articleId);
+    if (index === -1) {
+      return null;
+    }
+
+    return {
+      course: {
+        id: selected.course.id,
+        name: selected.course.name,
+      },
+      previous:
+        index > 0
+          ? {
+              id: visible[index - 1].article.id,
+              title: visible[index - 1].article.title,
+            }
+          : null,
+      next:
+        index < visible.length - 1
+          ? {
+              id: visible[index + 1].article.id,
+              title: visible[index + 1].article.title,
+            }
+          : null,
+    };
+  }
+
+  async findOne(
+    id: string,
+    user?: { id: string; role: UserRole },
+    courseId?: string,
+  ) {
     const article = await this.prisma.article.findUnique({
       where: { id },
       include: {
@@ -204,32 +286,28 @@ export class ArticlesService {
       throw new NotFoundException('Article not found');
     }
 
+    let visible = false;
+
     if (article.status === ArticleStatus.PUBLISHED) {
-      return {
-        ...article,
-        videos: await this.videosService.attachStreamUrls(article.videos),
-      };
+      visible = true;
+    } else if (user) {
+      visible =
+        article.authorId === user.id ||
+        user.role === UserRole.ADMIN ||
+        user.role === UserRole.MODERATOR;
     }
 
-    if (!user) {
+    if (!visible) {
       throw new NotFoundException('Article not found');
     }
 
-    if (article.authorId === user.id) {
-      return {
-        ...article,
-        videos: await this.videosService.attachStreamUrls(article.videos),
-      };
-    }
+    const courseNav = await this.buildCourseNav(id, courseId, user);
 
-    if (user.role === UserRole.ADMIN || user.role === UserRole.MODERATOR) {
-      return {
-        ...article,
-        videos: await this.videosService.attachStreamUrls(article.videos),
-      };
-    }
-
-    throw new NotFoundException('Article not found');
+    return {
+      ...article,
+      videos: await this.videosService.attachStreamUrls(article.videos),
+      courseNav,
+    };
   }
 
   async findAll(dto: ListArticlesDto) {

@@ -15,6 +15,7 @@ export default function AdminCoursesPage() {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
+  const [publishImmediately, setPublishImmediately] = useState(true);
 
   const load = () => {
     setLoading(true);
@@ -36,7 +37,12 @@ export default function AdminCoursesPage() {
     e.preventDefault();
     await apiFetch('/courses', {
       method: 'POST',
-      body: { name, slug, description: description || undefined },
+      body: {
+        name,
+        slug,
+        description: description || undefined,
+        status: publishImmediately ? 'published' : 'draft',
+      },
     });
     setName('');
     setSlug('');
@@ -79,6 +85,14 @@ export default function AdminCoursesPage() {
           <label>Описание</label>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={publishImmediately}
+            onChange={(e) => setPublishImmediately(e.target.checked)}
+          />
+          Опубликовать сразу (отображать на странице «Курсы»)
+        </label>
         <button type="submit" className="btn btn-primary">Создать</button>
       </form>
 
@@ -88,8 +102,17 @@ export default function AdminCoursesPage() {
             <div>
               <h3>{course.name}</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                {course.slug} · {course.status} · {course._count?.articles || 0} статей
+                {course.slug} ·{' '}
+                <span className={`badge badge-${course.status === 'published' ? 'published' : 'draft'}`}>
+                  {course.status === 'published' ? 'опубликован' : 'черновик'}
+                </span>
+                {' '}· {course._count?.articles || 0} статей
               </p>
+              {course.status === 'draft' && (
+                <p style={{ color: 'var(--warning, #b45309)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                  Не виден на публичной странице — нажмите «Опубликовать»
+                </p>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Link href={`/admin/courses/${course.id}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>

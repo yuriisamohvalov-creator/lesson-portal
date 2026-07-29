@@ -1,0 +1,88 @@
+# GitLab CI/CD for Lessons Portal
+#
+# Pipelines:
+#   develop  -> deploy:local   (dev stack on runner host)
+#   main     -> deploy:prod    (manual, stable release to brix-pc)
+#   tags     -> deploy:prod    (manual)
+#
+# Runner: shell executor on SER9, tag `lessons-portal`
+# Docs:   docs/gitlab-ci.md
+
+stages:
+  - test
+  - deploy
+
+default:
+  tags:
+    - lessons-portal
+  interruptible: true
+
+variables:
+  GIT_DEPTH: "0"
+
+# --- Test (shell runner, Node.js on host) ---
+
+backend:lint:
+  stage: test
+  script:
+    - cd backend && npm ci && npx prisma generate && npx tsc --noEmit
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+backend:test:
+  stage: test
+  script:
+    - cd backend && npm ci && npx prisma generate
+    - cd backend && npm test -- --testPathPattern='\.spec\.ts$' --passWithNoTests
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+frontend:lint:
+  stage: test
+  script:
+    - cd frontend && npm ci && npx tsc --noEmit && npm run build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# --- Deploy: local dev stack on runner host (SER9) ---
+
+deploy:local:
+  stage: deploy
+  resource_group: local
+  needs:
+    - job: backend:lint
+      optional: true
+    - job: backend:test
+      optional: true
+    - job: frontend:lint
+      optional: true
+  script:
+    - bash deploy/gitlab-local-deploy.sh
+  environment:
+    name: local
+    url: http://localhost:3002
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+# --- Deploy: stable prod on brix-pc ---
+
+deploy:prod:
+  stage: deploy
+  resource_group: production
+  needs: []
+  script:
+    - bash deploy/gitlab-prod-deploy.sh
+  environment:
+    name: production
+    url: https://lessons.samoh.ru
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+    - if: $CI_COMMIT_TAG
+      when: manual

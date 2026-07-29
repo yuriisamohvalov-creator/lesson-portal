@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, MinLength } from 'class-validator';
+import { IsString, IsOptional, MaxLength, MinLength, IsEnum } from 'class-validator';
 
 export class CreateCourseDto {
   @IsString()
@@ -15,4 +15,8 @@ export class CreateCourseDto {
   @MinLength(1)
   @MaxLength(100)
   slug!: string;
+
+  @IsOptional()
+  @IsEnum(['draft', 'published'])
+  status?: 'draft' | 'published';
 }

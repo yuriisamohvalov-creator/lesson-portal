@@ -43,6 +43,17 @@
 
 API: `https://lessons.samoh.ru/api/*` · Swagger: `https://lessons.samoh.ru/api/docs`
 
+## GitLab CI/CD
+
+Self-hosted GitLab: `ssh://git@gitlab.local:2222/yurii.samohvalov/lesson-portal.git`
+
+| Pipeline | Ветка | Деплой |
+|----------|-------|--------|
+| `deploy:local` | `develop` | dev-стек на runner-хосте (localhost:3002) |
+| `deploy:prod` | `main` / tags | вручную → brix-pc (lessons.samoh.ru) |
+
+Подробнее: [docs/gitlab-ci.md](docs/gitlab-ci.md)
+
 ## Продакшен (локально)
 
 1. Скопируйте `.env.example` в `.env` и заполните секреты:

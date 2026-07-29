@@ -25,7 +25,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           .sort((a: any, b: any) => a.order - b.order)
           .map((ca: any) => (
             <li key={ca.article.id} style={{ marginBottom: '0.75rem' }}>
-              <Link href={`/articles/${ca.article.id}`}>{ca.article.title}</Link>
+              <Link href={`/articles/${ca.article.id}?course=${id}`}>{ca.article.title}</Link>
             </li>
           ))}
       </ol>
