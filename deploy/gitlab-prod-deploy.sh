@@ -3,19 +3,39 @@
 set -euo pipefail
 
 SOURCE_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-DEPLOY_DIR="${BRIX_PC_DEPLOY_DIR:-/home/ysamohvalov/service/lessons-portal}"
 SSH_USER="${BRIX_PC_USER:-ysamohvalov}"
 SSH_HOST="${BRIX_PC_HOST:-192.168.150.90}"
 SSH_TARGET="${SSH_USER}@${SSH_HOST}"
 SSH_IDENTITY=""
 TMP_KEY=""
 
+# Resolve deploy dir: trim; if CI File-variable path was used by mistake, read contents.
+resolve_deploy_dir() {
+  local raw="${BRIX_PC_DEPLOY_DIR:-/home/ysamohvalov/service/lessons-portal}"
+  raw="${raw#"${raw%%[![:space:]]*}"}"
+  raw="${raw%"${raw##*[![:space:]]}"}"
+  if [[ -f "$raw" ]]; then
+    echo "WARNING: BRIX_PC_DEPLOY_DIR points to a file (File variable?). Reading path from it." >&2
+    raw="$(tr -d '\r' < "$raw" | head -n1)"
+    raw="${raw#"${raw%%[![:space:]]*}"}"
+    raw="${raw%"${raw##*[![:space:]]}"}"
+  fi
+  raw="${raw%/}"
+  if [[ -z "$raw" || "$raw" != /* ]]; then
+    echo "ERROR: BRIX_PC_DEPLOY_DIR must be an absolute path, got: '${BRIX_PC_DEPLOY_DIR:-}'" >&2
+    exit 1
+  fi
+  printf '%s' "$raw"
+}
+
+DEPLOY_DIR="$(resolve_deploy_dir)"
+
 cleanup() {
   [[ -n "${TMP_KEY:-}" && -f "${TMP_KEY:-}" ]] && rm -f "$TMP_KEY"
 }
 trap cleanup EXIT
 
-echo "=== GitLab prod deploy -> $SSH_TARGET ==="
+echo "=== GitLab prod deploy -> ${SSH_USER}@${SSH_HOST} ==="
 echo "Source:  $SOURCE_DIR"
 echo "Target:  $DEPLOY_DIR"
 echo "Branch:  ${CI_COMMIT_REF_NAME:-unknown}"
@@ -33,7 +53,6 @@ normalize_key_file() {
 key_is_usable() {
   local key="$1"
   [[ -f "$key" ]] || return 1
-  # Reject passphrase-protected / corrupt keys without prompting
   ssh-keygen -y -f "$key" -P "" >/dev/null 2>&1
 }
 
@@ -98,7 +117,11 @@ setup_ssh() {
 
 setup_ssh
 
-echo "=== Sync files to $SSH_TARGET ==="
+remote_ssh() {
+  ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_IDENTITY" "$SSH_TARGET" "$@"
+}
+
+echo "=== Sync files to ${SSH_USER}@${SSH_HOST}:$DEPLOY_DIR ==="
 RSYNC_RSH="ssh -o BatchMode=yes -o IdentitiesOnly=yes -i ${SSH_IDENTITY}"
 rsync -az --delete \
   -e "$RSYNC_RSH" \
@@ -109,11 +132,13 @@ rsync -az --delete \
   --exclude frontend/node_modules \
   --exclude .env \
   --exclude docker-compose.override.yml \
-  "$SOURCE_DIR/" "$SSH_TARGET:$DEPLOY_DIR/"
+  "$SOURCE_DIR/" "${SSH_TARGET}:${DEPLOY_DIR}/"
+
+echo "=== Verify remote deploy script ==="
+remote_ssh "set -e; test -d '$DEPLOY_DIR'; test -f '$DEPLOY_DIR/deploy/dockhand-deploy.sh'; ls -la '$DEPLOY_DIR/deploy/dockhand-deploy.sh'"
 
 echo "=== Run prod deploy on brix-pc ==="
-ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_IDENTITY" "$SSH_TARGET" \
-  "chmod +x '$DEPLOY_DIR/deploy/dockhand-deploy.sh' && '$DEPLOY_DIR/deploy/dockhand-deploy.sh'"
+remote_ssh "set -euo pipefail; cd '$DEPLOY_DIR'; chmod +x deploy/dockhand-deploy.sh; bash deploy/dockhand-deploy.sh"
 
 echo "=== Prod deploy finished ==="
 echo "URL: https://lessons.samoh.ru"
