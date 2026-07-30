@@ -9,7 +9,8 @@ COPY . .
 EXPOSE 3001 9229
 CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
 
-FROM node:22-alpine AS builder
+# Use debian slim (not alpine) so Prisma `native` engine matches CI/dev and the runner.
+FROM node:22-slim AS builder
 WORKDIR /app
 ENV NODE_OPTIONS=--max-old-space-size=2048
 ENV npm_config_registry=https://registry.npmjs.org/
@@ -20,12 +21,13 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-FROM node:22-alpine AS runner
-RUN apk add --no-cache openssl wget
+FROM node:22-slim AS runner
+RUN apt-get update -y && apt-get install -y openssl wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV npm_config_registry=https://registry.npmjs.org/
 COPY package*.json ./
-RUN npm ci --omit=dev && npm install --no-save prisma dotenv
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --no-audit --no-fund && npm install --no-save prisma dotenv
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
