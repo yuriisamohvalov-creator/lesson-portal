@@ -6,6 +6,7 @@
 #   tags     -> deploy:prod    (manual)
 #
 # Runner: shell executor on SER9, tag `lessons-portal`
+# npm: Verdaccio proxy http://127.0.0.1:4873 + shared host cache
 # Docs:   docs/gitlab-ci.md
 
 stages:
@@ -16,22 +17,15 @@ default:
   tags:
     - lessons-portal
   interruptible: true
-  cache:
-    key:
-      files:
-        - backend/package-lock.json
-        - frontend/package-lock.json
-    paths:
-      - .npm/
-    policy: pull-push
 
 variables:
-  # Shallow clone is enough for CI; full history only when needed for release notes
   GIT_DEPTH: "50"
   BRIX_PC_HOST: "192.168.150.90"
   BRIX_PC_USER: "ysamohvalov"
   BRIX_PC_DEPLOY_DIR: "/home/ysamohvalov/service/lessons-portal"
-  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  # Shared across all shell runners on SER9
+  npm_config_cache: "/home/gitlab-runner/.npm"
+  npm_config_registry: "http://127.0.0.1:4873"
   npm_config_prefer_offline: "true"
   npm_config_fund: "false"
   npm_config_audit: "false"
