@@ -47,47 +47,57 @@ export default function ModerationPage() {
     loadQueue();
   };
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Очередь модерации</h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-slate-100">Очередь модерации</h1>
       {articles.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>Нет статей на модерации</p>
+        <p className="text-slate-400">Нет статей на модерации</p>
       ) : (
-        articles.map((article) => (
-          <div key={article.id} className="card">
-            <h3>{article.title}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              Автор: {article.author?.displayName} · {article.category?.name}
-            </p>
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Link href={`/articles/${article.id}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>Открыть</Link>
-              <Link href={`/moderation/history/${article.id}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>История</Link>
-              <button className="btn btn-success" onClick={() => handleApprove(article.id)}>Одобрить</button>
-              <button className="btn btn-danger" onClick={() => setRejectId(article.id)}>Отклонить</button>
-            </div>
-            {rejectId === article.id && (
-              <div style={{ marginTop: '0.5rem' }}>
-                <input
-                  type="text"
-                  placeholder="Причина отклонения"
-                  value={rejectComment}
-                  onChange={(e) => setRejectComment(e.target.value)}
-                  style={{ padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', width: '300px' }}
-                />
-                <button
-                  className="btn btn-danger"
-                  style={{ marginLeft: '0.5rem' }}
-                  onClick={() => handleReject(article.id)}
-                  disabled={!rejectComment.trim()}
-                >
-                  Подтвердить
+        <div className="space-y-4">
+          {articles.map((article) => (
+            <div key={article.id} className="card">
+              <h3 className="text-lg font-semibold text-slate-100">{article.title}</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Автор: {article.author?.displayName} · {article.category?.name}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Link href={`/articles/${article.id}`} className="btn btn-secondary no-underline">
+                  Открыть
+                </Link>
+                <Link href={`/moderation/history/${article.id}`} className="btn btn-secondary no-underline">
+                  История
+                </Link>
+                <button type="button" className="btn btn-success" onClick={() => handleApprove(article.id)}>
+                  Одобрить
+                </button>
+                <button type="button" className="btn btn-danger" onClick={() => setRejectId(article.id)}>
+                  Отклонить
                 </button>
               </div>
-            )}
-          </div>
-        ))
+              {rejectId === article.id && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    placeholder="Причина отклонения"
+                    value={rejectComment}
+                    onChange={(e) => setRejectComment(e.target.value)}
+                    className="min-w-[240px] flex-1 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={() => handleReject(article.id)}
+                    disabled={!rejectComment.trim()}
+                  >
+                    Подтвердить
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

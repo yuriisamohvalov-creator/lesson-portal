@@ -41,11 +41,13 @@ export default function ProfilePage() {
     }
   };
 
-  if (authLoading || !user) return <div>Загрузка...</div>;
+  if (authLoading || !user) {
+    return <div className="text-slate-400">Загрузка...</div>;
+  }
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto' }}>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Профиль</h1>
+    <div className="mx-auto max-w-md space-y-4">
+      <h1 className="text-2xl font-bold text-slate-100">Профиль</h1>
       <form onSubmit={handleSubmit} className="card">
         <div className="form-group">
           <label>Email</label>
@@ -59,8 +61,8 @@ export default function ProfilePage() {
           <label>Роль</label>
           <input value={user.role} disabled />
         </div>
-        {message && <p style={{ color: 'var(--success)', marginBottom: '1rem' }}>{message}</p>}
-        {error && <p style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</p>}
+        {message && <p className="mb-3 text-sm text-emerald-400">{message}</p>}
+        {error && <p className="mb-3 text-sm text-rose-400">{error}</p>}
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? 'Сохранение...' : 'Сохранить'}
         </button>

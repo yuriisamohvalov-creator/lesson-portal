@@ -23,6 +23,7 @@ rsync -az --delete \
   --exclude .env \
   "$SOURCE_DIR/" "$DEPLOY_DIR/"
 
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: Env file not found: $ENV_FILE"
   echo "Create it from .env.example on the runner host."
@@ -32,6 +33,21 @@ fi
 cp "$ENV_FILE" "$DEPLOY_DIR/.env"
 
 cd "$DEPLOY_DIR"
+
+# Host node_modules are bind-mounted in docker-compose.override.yml
+echo "=== npm ci (host mounts for backend/frontend) ==="
+export npm_config_registry="${npm_config_registry:-http://127.0.0.1:4873}"
+export npm_config_cache="${npm_config_cache:-/home/gitlab-runner/.npm}"
+export PRISMA_SKIP_POSTINSTALL_GENERATE="${PRISMA_SKIP_POSTINSTALL_GENERATE:-true}"
+(
+  cd backend
+  npm ci --prefer-offline --no-audit --no-fund
+  npx prisma generate
+)
+(
+  cd frontend
+  npm ci --prefer-offline --no-audit --no-fund
+)
 
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.override.yml --env-file .env"
 

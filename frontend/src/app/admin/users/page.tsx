@@ -59,15 +59,15 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Пользователи</h1>
+    <div className="space-y-4">
+      <h1 className="mb-4 text-2xl font-bold text-slate-100">Пользователи</h1>
       <AdminNav />
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderBottom: '2px solid var(--border)' }}>
+          <tr style={{ borderBottom: '2px solid #363646' }}>
             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Email</th>
             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Имя</th>
             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Роль</th>
@@ -77,14 +77,14 @@ export default function AdminUsersPage() {
         </thead>
         <tbody>
           {users.map((u) => (
-            <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+            <tr key={u.id} style={{ borderBottom: '1px solid #2A2A37' }}>
               <td style={{ padding: '0.5rem' }}>{u.email}</td>
               <td style={{ padding: '0.5rem' }}>{u.displayName}</td>
               <td style={{ padding: '0.5rem' }}>
                 <select
                   value={u.role}
                   onChange={(e) => handleChangeRole(u.id, e.target.value)}
-                  style={{ padding: '0.25rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+                  style={{ padding: '0.25rem', border: '1px solid #363646', borderRadius: '0.75rem', background: '#2A2A37', color: '#DCD7BA' }}
                 >
                   <option value="USER">USER</option>
                   <option value="MODERATOR">MODERATOR</option>
@@ -93,9 +93,9 @@ export default function AdminUsersPage() {
               </td>
               <td style={{ padding: '0.5rem' }}>
                 {u.isBlocked ? (
-                  <span style={{ color: 'var(--danger)' }}>Заблокирован</span>
+                  <span style={{ color: '#E46876' }}>Заблокирован</span>
                 ) : (
-                  <span style={{ color: 'var(--success)' }}>Активен</span>
+                  <span style={{ color: '#98BB6C' }}>Активен</span>
                 )}
               </td>
               <td style={{ padding: '0.5rem' }}>

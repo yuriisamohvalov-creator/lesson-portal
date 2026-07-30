@@ -57,16 +57,16 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Категории</h1>
+    <div className="space-y-4">
+      <h1 className="mb-4 text-2xl font-bold text-slate-100">Категории</h1>
       <AdminNav />
 
       <form onSubmit={handleCreate} className="card" style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ marginBottom: '1rem' }}>Новая категория</h3>
-        {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+        {error && <p style={{ color: '#E46876' }}>{error}</p>}
         <div className="form-group">
           <label>Название</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required />
@@ -82,7 +82,7 @@ export default function AdminCategoriesPage() {
         {categories.map((cat) => (
           <div key={cat.id} className="card">
             <h3>{cat.name}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            <p style={{ color: '#9A9884', fontSize: '0.875rem' }}>
               slug: {cat.slug} · {cat._count?.articles || 0} статей
             </p>
             <button className="btn btn-danger" style={{ marginTop: '0.5rem' }} onClick={() => handleDelete(cat.id)}>

@@ -31,12 +31,12 @@ export default function AdminArticlesPage() {
     load();
   }, [user, authLoading, router, status]);
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
-  if (!data) return <div>Ошибка загрузки</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
+  if (!data) return <div className="text-rose-400">Ошибка загрузки</div>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Все статьи</h1>
+    <div className="space-y-4">
+      <h1 className="mb-4 text-2xl font-bold text-slate-100">Все статьи</h1>
       <AdminNav />
 
       <div style={{ marginBottom: '1rem' }}>
@@ -56,7 +56,7 @@ export default function AdminArticlesPage() {
               <Link href={`/articles/${article.id}`} style={{ fontWeight: 600, textDecoration: 'none' }}>
                 {article.title}
               </Link>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              <p style={{ color: '#9A9884', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                 {article.status} · {article.author?.displayName} · {article.category?.name}
               </p>
             </div>

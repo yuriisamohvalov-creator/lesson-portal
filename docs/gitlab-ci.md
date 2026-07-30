@@ -8,8 +8,36 @@
 | `deploy:prod` | `main`, tags | **вручную** (Play) | prod на brix-pc → https://lessons.samoh.ru |
 
 Тесты (`backend:check`, `frontend:check`) запускаются на MR и push в `develop` / `main`.
-Один job = один `npm ci` (lint+test/build вместе), кэш `.npm/`, shallow clone `GIT_DEPTH=50`.
-Runner: `concurrent = 3` в `/etc/gitlab-runner/config.toml`.
+Один job = один `npm ci` (lint+test/build вместе), shallow clone `GIT_DEPTH=50`.
+Runner: 5× shell на SER9, tag `lessons-portal`, **`concurrent = 2`** (не 5: иначе параллельные
+`prisma generate` с heap 8 GiB съедают RAM и jobs зависают).
+`PRISMA_SKIP_POSTINSTALL_GENERATE=true` + `NODE_OPTIONS=--max-old-space-size=2048 --dns-result-order=ipv4first`,
+явный `npx prisma generate` после `npm ci` (скрипты включены — иначе не скачиваются engines).
+В `schema.prisma` только `binaryTargets = ["native"]` (лишний `linux-musl` заставлял CI
+скачивать engine с CDN и зависать). Alpine-образы делают `prisma generate` внутри build.
+`resource_group: npm-backend` сериализует backend-сборки.
+
+### npm cache (SER9)
+
+GitLab `cache:` для `.npm/` на shell executor **не работал** (`Failed to extract cache`). Вместо этого:
+
+| Слой | Путь / URL | Назначение |
+|------|------------|------------|
+| Verdaccio | `http://127.0.0.1:4873` | локальный proxy/кэш tarball’ов с npmjs |
+| Host npm cache | `/home/gitlab-runner/.npm` | общий `_cacache` для всех 5 runners |
+
+```bash
+# Verdaccio
+cd /home/ysamohvalov/project/devops/verdaccio && docker compose up -d
+curl -sf http://127.0.0.1:4873/-/ping   # {}
+# UI: http://SER9:4873/
+```
+
+CI vars: `npm_config_registry=http://127.0.0.1:4873`, `npm_config_cache=/home/gitlab-runner/.npm`.
+
+**Почему не Nexus / GitLab Package Registry:** Package Registry в GitLab — для публикации своих пакетов, не pull-through proxy npmjs. Nexus3 избыточен только для npm. Verdaccio легче и заточен под npm.
+
+**Почему не только host `.npm`:** без registry-proxy разные runners всё равно бьют в npmjs при промахе метаданных; Verdaccio хранит пакеты на диске и отдаёт локально.
 
 ## 1. GitLab Runner (shell, SER9)
 

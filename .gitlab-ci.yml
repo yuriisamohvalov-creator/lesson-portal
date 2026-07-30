@@ -6,42 +6,55 @@
 #   tags     -> deploy:prod    (manual)
 #
 # Runner: shell executor on SER9, tag `lessons-portal`
+# npm: Verdaccio proxy http://127.0.0.1:4873 + shared host cache
 # Docs:   docs/gitlab-ci.md
 
 stages:
   - test
   - deploy
 
+# Avoid duplicate pipelines for the same commit (branch push + MR)
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
 default:
   tags:
     - lessons-portal
   interruptible: true
-  cache:
-    key:
-      files:
-        - backend/package-lock.json
-        - frontend/package-lock.json
-    paths:
-      - .npm/
-    policy: pull-push
+  timeout: 20m
 
 variables:
-  # Shallow clone is enough for CI; full history only when needed for release notes
   GIT_DEPTH: "50"
   BRIX_PC_HOST: "192.168.150.90"
   BRIX_PC_USER: "ysamohvalov"
   BRIX_PC_DEPLOY_DIR: "/home/ysamohvalov/service/lessons-portal"
-  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  # Shared across all shell runners on SER9
+  npm_config_cache: "/home/gitlab-runner/.npm"
+  npm_config_registry: "http://127.0.0.1:4873"
   npm_config_prefer_offline: "true"
   npm_config_fund: "false"
   npm_config_audit: "false"
+  # Skip @prisma/client postinstall generate (engines still download via scripts).
+  # Cap heap: Prisma generator defaults to 8096 and OOMs under concurrent jobs.
+  # Prefer IPv4: IPv6 to binaries.prisma.sh is broken on this host and stalls downloads.
+  PRISMA_SKIP_POSTINSTALL_GENERATE: "true"
+  PRISMA_HIDE_UPDATE_MESSAGE: "true"
+  NODE_OPTIONS: "--max-old-space-size=2048 --dns-result-order=ipv4first"
 
 # --- Test (shell runner, Node.js on host) ---
 
 backend:check:
   stage: test
+  resource_group: npm-backend
   script:
     - cd backend
+    # Keep scripts so @prisma/engines postinstall downloads binaries.
+    # PRISMA_SKIP_POSTINSTALL_GENERATE skips only client generate during install.
     - npm ci --prefer-offline --no-audit --no-fund
     - npx prisma generate
     - npx tsc --noEmit
@@ -50,9 +63,11 @@ backend:check:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "version2"
 
 frontend:check:
   stage: test
+  resource_group: npm-frontend
   script:
     - cd frontend
     - npm ci --prefer-offline --no-audit --no-fund
@@ -62,6 +77,7 @@ frontend:check:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "version2"
 
 # --- Deploy: local dev stack on runner host (SER9) ---
 
@@ -71,6 +87,11 @@ deploy:local:
   needs:
     - job: backend:check
     - job: frontend:check
+  variables:
+    # Runner-owned tree; compose project name stays "lessons-portal" (dir basename)
+    # and replaces the live stack on :3001/:3002.
+    LOCAL_DEPLOY_DIR: "/home/gitlab-runner/lessons-portal"
+    LOCAL_ENV_FILE: "/home/ysamohvalov/project/lessons-portal/.env"
   script:
     - bash deploy/gitlab-local-deploy.sh
   environment:
@@ -78,6 +99,7 @@ deploy:local:
     url: http://localhost:3002
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "version2"
 
 # --- Deploy: stable prod on brix-pc ---
 

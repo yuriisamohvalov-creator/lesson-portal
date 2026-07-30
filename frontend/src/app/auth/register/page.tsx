@@ -28,10 +28,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '2rem auto' }}>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Регистрация</h1>
-      <form onSubmit={handleSubmit} className="card">
-        {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
+    <div className="mx-auto max-w-md space-y-4">
+      <h1 className="text-2xl font-bold text-slate-100">Регистрация</h1>
+      <form onSubmit={handleSubmit} className="card space-y-1">
+        {error && <div className="mb-3 text-sm text-rose-400">{error}</div>}
         <div className="form-group">
           <label>Имя</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
@@ -44,11 +44,14 @@ export default function RegisterPage() {
           <label>Пароль</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         </div>
-        <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+        <button type="submit" className="btn btn-primary w-full justify-center" disabled={loading}>
           {loading ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
-        <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>
-          Уже есть аккаунт? <Link href="/auth/login">Войти</Link>
+        <p className="mt-4 text-center text-sm text-slate-400">
+          Уже есть аккаунт?{' '}
+          <Link href="/auth/login" className="text-indigo-400 no-underline hover:text-indigo-300">
+            Войти
+          </Link>
         </p>
       </form>
     </div>

@@ -55,18 +55,18 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
     load();
   };
 
-  if (authLoading || !course) return <div>Загрузка...</div>;
+  if (authLoading || !course) return <div className="text-slate-400">Загрузка...</div>;
 
   return (
-    <div>
+    <div className="space-y-4">
       <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{course.name}</h1>
       <AdminNav />
-      <Link href="/admin/courses" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>← К списку курсов</Link>
+      <Link href="/admin/courses" style={{ color: '#9A9884', fontSize: '0.875rem' }}>← К списку курсов</Link>
 
       <section style={{ marginTop: '1.5rem' }}>
         <h2 style={{ fontSize: '1.125rem', marginBottom: '1rem' }}>Статьи в курсе</h2>
         {course.articles?.length === 0 && (
-          <p style={{ color: 'var(--text-muted)' }}>Статей пока нет</p>
+          <p style={{ color: '#9A9884' }}>Статей пока нет</p>
         )}
         {course.articles?.map((item: any) => (
           <div key={item.id} className="card" style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
