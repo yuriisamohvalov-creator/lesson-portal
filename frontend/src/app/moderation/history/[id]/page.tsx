@@ -30,25 +30,27 @@ export default function ModerationHistoryPage({ params }: { params: Promise<{ id
       .finally(() => setLoading(false));
   }, [user, authLoading, router, articleId]);
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
 
   return (
-    <div>
-      <Link href="/moderation" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>← К очереди</Link>
-      <h1 style={{ fontSize: '1.5rem', margin: '1rem 0' }}>История модерации</h1>
+    <div className="space-y-4">
+      <Link href="/moderation" className="text-sm text-slate-400 no-underline hover:text-indigo-300">
+        ← К очереди
+      </Link>
+      <h1 className="text-2xl font-bold text-slate-100">История модерации</h1>
 
       {history.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>Записей нет</p>
+        <p className="text-slate-400">Записей нет</p>
       ) : (
         history.map((entry) => (
-          <div key={entry.id} className="card" style={{ marginBottom: '0.75rem' }}>
-            <p style={{ fontWeight: 600 }}>
+          <div key={entry.id} className="card">
+            <p className="font-semibold text-slate-100">
               {entry.action === 'APPROVE' ? 'Одобрено' : 'Отклонено'}
             </p>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            <p className="text-sm text-slate-400">
               {entry.moderator?.displayName} · {new Date(entry.createdAt).toLocaleString('ru-RU')}
             </p>
-            {entry.comment && <p style={{ marginTop: '0.5rem' }}>{entry.comment}</p>}
+            {entry.comment && <p className="mt-2 text-slate-300">{entry.comment}</p>}
           </div>
         ))
       )}

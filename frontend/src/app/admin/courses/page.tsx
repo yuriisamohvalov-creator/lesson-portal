@@ -64,11 +64,11 @@ export default function AdminCoursesPage() {
     load();
   };
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Курсы</h1>
+    <div className="space-y-4">
+      <h1 className="mb-4 text-2xl font-bold text-slate-100">Курсы</h1>
       <AdminNav />
 
       <form onSubmit={handleCreate} className="card" style={{ marginBottom: '1.5rem' }}>
@@ -101,7 +101,7 @@ export default function AdminCoursesPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
             <div>
               <h3>{course.name}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+              <p style={{ color: '#9A9884', fontSize: '0.875rem' }}>
                 {course.slug} ·{' '}
                 <span className={`badge badge-${course.status === 'published' ? 'published' : 'draft'}`}>
                   {course.status === 'published' ? 'опубликован' : 'черновик'}

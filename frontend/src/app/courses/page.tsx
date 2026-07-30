@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { CourseCard } from '@/components/ui';
 
 export const revalidate = 60;
 
@@ -8,29 +9,31 @@ export default async function CoursesPage() {
   try {
     data = await apiFetch<any>('/courses?limit=20');
   } catch {
-    return <div>Ошибка загрузки</div>;
+    return (
+      <div className="rounded-2xl border border-rose-500/30 bg-rose-950/40 p-6 text-rose-300">
+        Ошибка загрузки
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Курсы</h1>
-      {data.data.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>Пока нет опубликованных курсов.</p>
-      ) : (
-      <div className="grid grid-3">
-        {data.data.map((course: any) => (
-          <Link key={course.id} href={`/courses/${course.id}`} style={{ textDecoration: 'none' }}>
-            <div className="card" style={{ cursor: 'pointer' }}>
-              <h3 style={{ color: 'var(--text)' }}>{course.name}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{course.description}</p>
-              <p style={{ fontSize: '0.875rem' }}>
-                {course.author?.displayName} · {course.articles?.length || 0} статей
-              </p>
-            </div>
-          </Link>
-        ))}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-100">Курсы</h1>
+        <p className="mt-1 text-sm text-slate-400">Подборки статей в порядке изучения</p>
       </div>
+      {data.data.length === 0 ? (
+        <p className="text-slate-400">Пока нет опубликованных курсов.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {data.data.map((course: any) => (
+            <CourseCard key={course.id} course={course} />
+          ))}
+        </div>
       )}
+      <Link href="/articles" className="inline-block text-sm text-indigo-400 no-underline hover:text-indigo-300">
+        Смотреть все статьи →
+      </Link>
     </div>
   );
 }

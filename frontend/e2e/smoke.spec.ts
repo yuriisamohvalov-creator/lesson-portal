@@ -8,8 +8,8 @@ test.describe('Homepage', () => {
 
   test('should have navigation links', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('nav')).toBeVisible();
-    await expect(page.locator('a[href="/articles"]')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Основная' })).toBeVisible();
+    await expect(page.locator('a[href="/articles"]').first()).toBeVisible();
   });
 });
 

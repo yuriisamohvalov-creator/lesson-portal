@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
-import { Navbar } from '@/components/Navbar';
+import { AppShell } from '@/components/AppShell';
 
 export const metadata: Metadata = {
   title: 'Lessons Portal',
@@ -13,8 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru">
       <body>
         <AuthProvider>
-          <Navbar />
-          <main className="container">{children}</main>
+          <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>
     </html>

@@ -20,9 +20,7 @@ export function UploadedVideo({ videoId, url, processStatus }: UploadedVideoProp
 
   if (processStatus === 'pending' || (!src && !url)) {
     return (
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-        Видео обрабатывается...
-      </p>
+      <p className="text-sm text-slate-400">Видео обрабатывается...</p>
     );
   }
 
@@ -32,7 +30,7 @@ export function UploadedVideo({ videoId, url, processStatus }: UploadedVideoProp
     <video
       controls
       preload="metadata"
-      style={{ width: '100%', borderRadius: 'var(--radius)', background: '#000' }}
+      className="w-full rounded-2xl border border-slate-800 bg-black"
     >
       <source src={streamUrl} />
       Ваш браузер не поддерживает воспроизведение видео.

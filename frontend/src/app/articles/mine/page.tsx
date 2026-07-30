@@ -5,6 +5,7 @@ import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { StatusBadge } from '@/components/ui';
 
 export default function MyArticlesPage() {
   const [articles, setArticles] = useState<any[]>([]);
@@ -52,84 +53,83 @@ export default function MyArticlesPage() {
     }
   };
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '1.5rem' }}>Мои статьи</h1>
-        <Link href="/articles/create" className="btn btn-primary" style={{ textDecoration: 'none' }}>+ Написать</Link>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-100">Мои статьи</h1>
+        <Link href="/articles/create" className="btn btn-primary no-underline">
+          + Написать
+        </Link>
       </div>
 
       {articles.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>У вас пока нет статей. <Link href="/articles/create">Написать первую</Link></p>
+        <p className="text-slate-400">
+          У вас пока нет статей.{' '}
+          <Link href="/articles/create" className="text-indigo-400 no-underline hover:text-indigo-300">
+            Написать первую
+          </Link>
+        </p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid var(--border)' }}>
-              <th style={{ textAlign: 'left', padding: '0.75rem 0.5rem' }}>Заголовок</th>
-              <th style={{ textAlign: 'left', padding: '0.75rem 0.5rem' }}>Статус</th>
-              <th style={{ textAlign: 'left', padding: '0.75rem 0.5rem' }}>Дата</th>
-              <th style={{ textAlign: 'left', padding: '0.75rem 0.5rem' }}>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {articles.map((article) => (
-              <tr key={article.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '0.75rem 0.5rem' }}>
-                  <Link href={`/articles/${article.id}`} style={{ fontWeight: 500 }}>
-                    {article.title}
-                  </Link>
-                </td>
-                <td style={{ padding: '0.75rem 0.5rem' }}>
-                  <span className={`badge badge-${article.status.toLowerCase()}`}>
-                    {article.status}
-                  </span>
-                </td>
-                <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {new Date(article.createdAt).toLocaleString('ru-RU')}
-                </td>
-                <td style={{ padding: '0.75rem 0.5rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {article.lastRejectionComment && (
-                      <span style={{ color: 'var(--danger)', fontSize: '0.8rem', flexBasis: '100%' }}>
-                        Причина: {article.lastRejectionComment}
-                      </span>
-                    )}
-                    {canEdit(article.status) && (
-                      <Link
-                        href={`/articles/${article.id}/edit`}
-                        className="btn btn-secondary"
-                        style={{ textDecoration: 'none', fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
-                      >
-                        Редактировать
-                      </Link>
-                    )}
-                    {article.status === 'REJECTED' && (
-                      <button
-                        onClick={() => handleResubmit(article.id)}
-                        className="btn btn-primary"
-                        style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
-                      >
-                        Отправить заново
-                      </button>
-                    )}
-                    {(article.status === 'DRAFT' || article.status === 'REJECTED') && (
-                      <button
-                        onClick={() => handleDelete(article.id)}
-                        disabled={deletingId === article.id}
-                        className="btn btn-danger"
-                        style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
-                      >
-                        {deletingId === article.id ? '...' : 'Удалить'}
-                      </button>
-                    )}
-                  </div>
-                </td>
+        <div className="overflow-x-auto rounded-2xl border border-slate-800">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-slate-700 bg-slate-950/60 text-left text-slate-400">
+                <th className="px-4 py-3 font-semibold">Заголовок</th>
+                <th className="px-4 py-3 font-semibold">Статус</th>
+                <th className="px-4 py-3 font-semibold">Дата</th>
+                <th className="px-4 py-3 font-semibold">Действия</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {articles.map((article) => (
+                <tr key={article.id} className="border-b border-slate-800/80">
+                  <td className="px-4 py-3">
+                    <Link href={`/articles/${article.id}`} className="font-medium text-slate-200 no-underline hover:text-indigo-300">
+                      {article.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={article.status} />
+                  </td>
+                  <td className="px-4 py-3 text-slate-400">
+                    {new Date(article.createdAt).toLocaleString('ru-RU')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {article.lastRejectionComment && (
+                        <span className="basis-full text-xs text-rose-400">
+                          Причина: {article.lastRejectionComment}
+                        </span>
+                      )}
+                      {canEdit(article.status) && (
+                        <Link href={`/articles/${article.id}/edit`} className="btn btn-secondary no-underline text-xs">
+                          Редактировать
+                        </Link>
+                      )}
+                      {article.status === 'REJECTED' && (
+                        <button type="button" onClick={() => handleResubmit(article.id)} className="btn btn-primary text-xs">
+                          Отправить заново
+                        </button>
+                      )}
+                      {(article.status === 'DRAFT' || article.status === 'REJECTED') && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(article.id)}
+                          disabled={deletingId === article.id}
+                          className="btn btn-danger text-xs"
+                        >
+                          {deletingId === article.id ? '...' : 'Удалить'}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

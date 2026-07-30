@@ -142,36 +142,29 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: '2rem auto', padding: '0 1rem' }}>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Редактирование статьи</h1>
+    <div className="mx-auto max-w-3xl space-y-4">
+      <h1 className="text-2xl font-bold text-slate-100">Редактирование статьи</h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div style={{
-            background: '#fee2e2',
-            color: 'var(--danger)',
-            padding: '0.75rem 1rem',
-            borderRadius: 'var(--radius)',
-            marginBottom: '1rem',
-          }}>
+          <div className="rounded-xl border border-rose-500/30 bg-rose-950/40 px-4 py-3 text-sm text-rose-300">
             {error}
           </div>
         )}
 
-        <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="card">
           <div className="form-group">
-            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Заголовок</label>
+            <label>Заголовок</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              style={{ fontSize: '1.1rem', padding: '0.75rem' }}
             />
           </div>
 
           <div className="form-group">
-            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Категория</label>
+            <label>Категория</label>
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
               <option value="">Выберите категорию</option>
               {categories.map((cat: any) => (
@@ -181,10 +174,10 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Содержание</label>
-            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+        <div className="card">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <label className="text-sm font-semibold text-slate-300">Содержание</label>
+            <div className="flex flex-wrap items-center gap-1">
               <PdfImportButton
                 disabled={loading}
                 hasExistingContent={Boolean(getEditorContent().replace(/<[^>]*>/g, '').trim())}
@@ -193,17 +186,15 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               />
               <button
                 type="button"
-                className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn text-xs ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setActiveTab('edit')}
-                style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
               >
                 Редактор
               </button>
               <button
                 type="button"
-                className={`btn ${activeTab === 'preview' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn text-xs ${activeTab === 'preview' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={switchToPreview}
-                style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
               >
                 Предпросмотр
               </button>
@@ -211,29 +202,14 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           </div>
 
           <div style={{ display: activeTab === 'edit' ? 'block' : 'none' }}>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.25rem',
-              padding: '0.5rem',
-              background: '#f3f4f6',
-              borderRadius: 'var(--radius) var(--radius) 0 0',
-              borderBottom: '1px solid var(--border)',
-            }}>
+            <div className="flex flex-wrap gap-1 rounded-t-xl border border-b-0 border-slate-700 bg-slate-800 p-2">
               {TOOLBAR_BUTTONS.map((btn) => (
                 <button
                   key={btn.label}
                   type="button"
                   title={btn.title}
                   onClick={() => handleToolbarAction(btn.command, btn.value)}
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '4px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                  }}
+                  className="cursor-pointer rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
                 >
                   {btn.label}
                 </button>
@@ -243,15 +219,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
-              style={{
-                minHeight: '300px',
-                padding: '1rem',
-                border: '1px solid var(--border)',
-                borderRadius: '0 0 var(--radius) var(--radius)',
-                outline: 'none',
-                lineHeight: 1.8,
-                fontSize: '0.95rem',
-              }}
+              className="min-h-[300px] rounded-b-xl border border-slate-700 bg-slate-950/50 p-4 text-sm leading-8 text-slate-200 outline-none"
               onInput={syncContentFromEditor}
             />
           </div>
@@ -259,18 +227,12 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           {activeTab === 'preview' && (
             <div
               dangerouslySetInnerHTML={{ __html: content }}
-              style={{
-                minHeight: '300px',
-                padding: '1rem',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                lineHeight: 1.8,
-              }}
+              className="article-prose min-h-[300px] rounded-xl border border-slate-700 p-4 leading-8"
             />
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+        <div className="flex flex-wrap justify-end gap-3">
           <button type="button" className="btn btn-secondary" onClick={() => router.back()}>
             Отмена
           </button>

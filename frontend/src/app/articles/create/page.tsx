@@ -255,37 +255,31 @@ export default function CreateArticlePage() {
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: '2rem auto', padding: '0 1rem' }}>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Новая статья</h1>
+    <div className="mx-auto max-w-3xl space-y-4">
+      <h1 className="text-2xl font-bold text-slate-100">Новая статья</h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div style={{
-            background: '#fee2e2',
-            color: 'var(--danger)',
-            padding: '0.75rem 1rem',
-            borderRadius: 'var(--radius)',
-            marginBottom: '1rem',
-          }}>
+          <div className="rounded-xl border border-rose-500/30 bg-rose-950/40 px-4 py-3 text-sm text-rose-300">
             {error}
           </div>
         )}
 
-        <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="card">
           <div className="form-group">
-            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Заголовок статьи</label>
+            <label>Заголовок статьи</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Введите заголовок..."
               required
-              style={{ fontSize: '1.1rem', padding: '0.75rem' }}
+              className="text-base"
             />
           </div>
 
           <div className="form-group">
-            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Категория</label>
+            <label>Категория</label>
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
               <option value="">Выберите категорию</option>
               {categories.map((cat) => (
@@ -295,10 +289,10 @@ export default function CreateArticlePage() {
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Содержание</label>
-            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+        <div className="card">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <label className="text-sm font-semibold text-slate-300">Содержание</label>
+            <div className="flex flex-wrap items-center gap-1">
               <PdfImportButton
                 disabled={loading || uploading}
                 hasExistingContent={Boolean(getEditorContent().replace(/<[^>]*>/g, '').trim())}
@@ -307,17 +301,15 @@ export default function CreateArticlePage() {
               />
               <button
                 type="button"
-                className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn text-xs ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setActiveTab('edit')}
-                style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
               >
                 Редактор
               </button>
               <button
                 type="button"
-                className={`btn ${activeTab === 'preview' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn text-xs ${activeTab === 'preview' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={switchToPreview}
-                style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
               >
                 Предпросмотр
               </button>
@@ -325,30 +317,15 @@ export default function CreateArticlePage() {
           </div>
 
           <div style={{ display: activeTab === 'edit' ? 'block' : 'none' }}>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.25rem',
-              padding: '0.5rem',
-              background: '#f3f4f6',
-              borderRadius: 'var(--radius) var(--radius) 0 0',
-              borderBottom: '1px solid var(--border)',
-            }}>
+            <div className="flex flex-wrap gap-1 rounded-t-xl border border-b-0 border-slate-700 bg-slate-800 p-2">
               {TOOLBAR_BUTTONS.map((btn) => (
                 <button
                   key={btn.label}
                   type="button"
                   title={btn.title}
                   onClick={() => handleToolbarAction(btn.command, btn.value)}
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '4px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    fontWeight: btn.command.startsWith('formatBlock') ? 700 : 400,
-                  }}
+                  className="cursor-pointer rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
+                  style={{ fontWeight: btn.command.startsWith('formatBlock') ? 700 : 400 }}
                 >
                   {btn.label}
                 </button>
@@ -358,15 +335,7 @@ export default function CreateArticlePage() {
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
-              style={{
-                minHeight: '300px',
-                padding: '1rem',
-                border: '1px solid var(--border)',
-                borderRadius: '0 0 var(--radius) var(--radius)',
-                outline: 'none',
-                lineHeight: 1.8,
-                fontSize: '0.95rem',
-              }}
+              className="min-h-[300px] rounded-b-xl border border-slate-700 bg-slate-950/50 p-4 text-sm leading-8 text-slate-200 outline-none"
               onInput={syncContentFromEditor}
             />
           </div>
@@ -374,45 +343,36 @@ export default function CreateArticlePage() {
           {activeTab === 'preview' && (
             <div
               dangerouslySetInnerHTML={{ __html: content }}
-              style={{
-                minHeight: '300px',
-                padding: '1rem',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                lineHeight: 1.8,
-              }}
+              className="article-prose min-h-[300px] rounded-xl border border-slate-700 p-4 leading-8"
             />
           )}
         </div>
 
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        <div className="card">
+          <button
+            type="button"
+            className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left text-slate-200"
             onClick={() => setShowVideoForm(!showVideoForm)}
           >
-            <span style={{ fontSize: '1.25rem' }}>{showVideoForm ? '▼' : '▶'}</span>
-            <span style={{ fontWeight: 600 }}>Видео</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              (YouTube ссылка или загрузка файла)
-            </span>
-          </div>
+            <span className="text-lg">{showVideoForm ? '▼' : '▶'}</span>
+            <span className="font-semibold">Видео</span>
+            <span className="text-sm text-slate-400">(YouTube ссылка или загрузка файла)</span>
+          </button>
 
           {showVideoForm && (
-            <div style={{ marginTop: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div className="mb-4 flex gap-2">
                 <button
                   type="button"
-                  className={`btn ${videoTab === 'youtube' ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`btn text-xs ${videoTab === 'youtube' ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => setVideoTab('youtube')}
-                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
                 >
                   YouTube
                 </button>
                 <button
                   type="button"
-                  className={`btn ${videoTab === 'upload' ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`btn text-xs ${videoTab === 'upload' ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => setVideoTab('upload')}
-                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
                 >
                   Загрузить файл
                 </button>
@@ -420,15 +380,14 @@ export default function CreateArticlePage() {
 
               {videoTab === 'youtube' && (
                 <div className="form-group">
-                  <label style={{ fontSize: '0.875rem' }}>Ссылка на YouTube</label>
+                  <label>Ссылка на YouTube</label>
                   <input
                     type="url"
                     value={youtubeUrl}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
-                    style={{ width: '100%' }}
                   />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  <p className="mt-1 text-xs text-slate-400">
                     Поддерживаются форматы: youtube.com/watch?v=... и youtu.be/...
                   </p>
                 </div>
@@ -436,30 +395,22 @@ export default function CreateArticlePage() {
 
               {videoTab === 'upload' && (
                 <div className="form-group">
-                  <label style={{ fontSize: '0.875rem' }}>Видеофайл</label>
+                  <label>Видеофайл</label>
                   <input
                     type="file"
                     accept=".mp4,.webm,video/mp4,video/webm"
                     onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                    style={{ width: '100%' }}
                   />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  <p className="mt-1 text-xs text-slate-400">
                     Допустимые форматы: MP4, WebM. Максимальный размер: {MAX_VIDEO_MB >= 1024 ? `${MAX_VIDEO_MB / 1024} ГБ` : `${MAX_VIDEO_MB} МБ`}.
                   </p>
                   {uploading && (
-                    <div style={{ marginTop: '0.75rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                        Загрузка: {uploadProgress}%
-                      </div>
-                      <div style={{ height: 6, background: '#e5e7eb', borderRadius: 3 }}>
+                    <div className="mt-3">
+                      <div className="mb-1 text-xs text-slate-400">Загрузка: {uploadProgress}%</div>
+                      <div className="h-1.5 rounded bg-slate-800">
                         <div
-                          style={{
-                            width: `${uploadProgress}%`,
-                            height: '100%',
-                            background: 'var(--primary)',
-                            borderRadius: 3,
-                            transition: 'width 0.2s',
-                          }}
+                          className="h-full rounded bg-indigo-500 transition-all"
+                          style={{ width: `${uploadProgress}%` }}
                         />
                       </div>
                     </div>
@@ -470,12 +421,8 @@ export default function CreateArticlePage() {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => router.back()}
-          >
+        <div className="flex flex-wrap justify-end gap-3">
+          <button type="button" className="btn btn-secondary" onClick={() => router.back()}>
             Отмена
           </button>
           <button

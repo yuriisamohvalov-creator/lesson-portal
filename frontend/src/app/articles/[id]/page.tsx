@@ -16,10 +16,10 @@ function YouTubeEmbed({ url }: { url: string }) {
     .replace('youtu.be/', 'youtube.com/embed/')
     .replace('youtube.com/live/', 'youtube.com/embed/');
   return (
-    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 pb-[56.25%]">
       <iframe
         src={embedUrl}
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+        className="absolute inset-0 h-full w-full border-0"
         allowFullScreen
         title="YouTube video"
       />
@@ -82,38 +82,41 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Загрузка...</div>;
+  if (loading) {
+    return <div className="py-12 text-center text-slate-400">Загрузка...</div>;
+  }
   if (error === 'not-found' || !article) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <h1>Статья не найдена</h1>
-        <Link href="/articles" style={{ marginTop: '1rem', display: 'inline-block' }}>Вернуться к списку</Link>
+      <div className="space-y-4 py-12 text-center">
+        <h1 className="text-2xl font-bold text-slate-100">Статья не найдена</h1>
+        <Link href="/articles" className="inline-block text-indigo-400 no-underline hover:text-indigo-300">
+          Вернуться к списку
+        </Link>
       </div>
     );
   }
 
   return (
-    <article style={{ maxWidth: 800, margin: '0 auto' }}>
-      {/* Breadcrumb */}
-      <nav style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-        <Link href="/" style={{ color: 'var(--text-muted)' }}>Главная</Link>
+    <article className="mx-auto max-w-3xl space-y-6">
+      <nav className="text-sm text-slate-400">
+        <Link href="/" className="text-slate-400 no-underline hover:text-indigo-300">Главная</Link>
         {article.courseNav ? (
           <>
             {' / '}
-            <Link href="/courses" style={{ color: 'var(--text-muted)' }}>Курсы</Link>
+            <Link href="/courses" className="text-slate-400 no-underline hover:text-indigo-300">Курсы</Link>
             {' / '}
-            <Link href={`/courses/${article.courseNav.course.id}`} style={{ color: 'var(--text-muted)' }}>
+            <Link href={`/courses/${article.courseNav.course.id}`} className="text-slate-400 no-underline hover:text-indigo-300">
               {article.courseNav.course.name}
             </Link>
           </>
         ) : (
           <>
             {' / '}
-            <Link href="/articles" style={{ color: 'var(--text-muted)' }}>Статьи</Link>
+            <Link href="/articles" className="text-slate-400 no-underline hover:text-indigo-300">Статьи</Link>
             {article.category && (
               <>
                 {' / '}
-                <Link href={`/categories/${article.category.id}`} style={{ color: 'var(--text-muted)' }}>
+                <Link href={`/categories/${article.category.id}`} className="text-slate-400 no-underline hover:text-indigo-300">
                   {article.category.name}
                 </Link>
               </>
@@ -121,107 +124,65 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
           </>
         )}
         {' / '}
-        <span style={{ color: 'var(--text)' }}>{article.title}</span>
+        <span className="text-slate-200">{article.title}</span>
       </nav>
 
       {article.courseNav && <CourseArticleNav courseNav={article.courseNav} />}
 
-      {/* Author actions */}
       {isAuthor && (
-        <div style={{
-          display: 'flex',
-          gap: '0.5rem',
-          marginBottom: '1rem',
-          padding: '0.75rem 1rem',
-          background: '#f0f7ff',
-          borderRadius: 'var(--radius)',
-          border: '1px solid #d0e3ff',
-        }}>
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', alignSelf: 'center' }}>
-            Ваша статья:
-          </span>
-          {canEdit && (
-            <Link
-              href={`/articles/${articleId}/edit`}
-              className="btn btn-primary"
-              style={{ textDecoration: 'none', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
-            >
-              Редактировать
-            </Link>
-          )}
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-950/40 px-4 py-3">
+          <span className="text-sm text-slate-400">Ваша статья:</span>
+          <Link
+            href={`/articles/${articleId}/edit`}
+            className="rounded-lg bg-indigo-600/80 px-3 py-1.5 text-xs font-semibold text-slate-100 no-underline hover:bg-indigo-500"
+          >
+            Редактировать
+          </Link>
           {canEdit && (
             <button
+              type="button"
               onClick={handleDelete}
               disabled={deleting}
-              className="btn btn-danger"
-              style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+              className="rounded-lg bg-rose-600/80 px-3 py-1.5 text-xs font-semibold text-slate-100 hover:bg-rose-500 disabled:opacity-50"
             >
               {deleting ? 'Удаление...' : 'Удалить'}
             </button>
           )}
-          {!canEdit && (
-            <Link
-              href={`/articles/${articleId}/edit`}
-              className="btn btn-secondary"
-              style={{ textDecoration: 'none', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
-            >
-              Редактировать
-            </Link>
-          )}
         </div>
       )}
 
-      {/* Title */}
-      <h1 style={{ fontSize: '2rem', fontWeight: 700, lineHeight: 1.3, marginBottom: '0.75rem' }}>
-        {article.title}
-      </h1>
+      <header className="space-y-4 border-b border-slate-800 pb-6">
+        <h1 className="text-3xl font-bold leading-tight text-slate-100">{article.title}</h1>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+          {article.category?.name && (
+            <span className="rounded-full border border-indigo-500/30 bg-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-300">
+              {article.category.name}
+            </span>
+          )}
+          <span>{article.author?.displayName}</span>
+          <span>·</span>
+          <time dateTime={article.createdAt}>
+            {new Date(article.createdAt).toLocaleDateString('ru-RU', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </time>
+        </div>
+      </header>
 
-      {/* Meta */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        marginBottom: '2rem',
-        paddingBottom: '1rem',
-        borderBottom: '1px solid var(--border)',
-        fontSize: '0.875rem',
-        color: 'var(--text-muted)',
-      }}>
-        <span style={{
-          background: 'var(--primary)',
-          color: 'white',
-          padding: '0.25rem 0.75rem',
-          borderRadius: '9999px',
-          fontSize: '0.75rem',
-          fontWeight: 500,
-        }}>
-          {article.category?.name}
-        </span>
-        <span>{article.author?.displayName}</span>
-        <span>·</span>
-        <time dateTime={article.createdAt}>
-          {new Date(article.createdAt).toLocaleDateString('ru-RU', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </time>
-      </div>
-
-      {/* Content */}
       {article.content && (
         <div
+          className="article-prose text-[1.05rem] leading-8"
           dangerouslySetInnerHTML={{ __html: article.content }}
-          style={{ lineHeight: 1.8, fontSize: '1.05rem' }}
         />
       )}
 
-      {/* Videos */}
       {article.videos?.length > 0 && (
-        <section style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem', fontWeight: 600 }}>Видео</h2>
+        <section className="space-y-4 border-t border-slate-800 pt-8">
+          <h2 className="text-xl font-semibold text-slate-100">Видео</h2>
           {article.videos.map((video: any) => (
-            <div key={video.id} style={{ marginBottom: '1.5rem' }}>
+            <div key={video.id} className="mb-4">
               {video.type === 'YOUTUBE' && video.youtubeUrl && (
                 <YouTubeEmbed url={video.youtubeUrl} />
               )}
@@ -237,31 +198,18 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
         </section>
       )}
 
-      {/* Author info */}
       {article.courseNav && <CourseArticleNav courseNav={article.courseNav} />}
 
-      <div style={{
-        marginTop: '3rem',
-        paddingTop: '2rem',
-        borderTop: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-      }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: '50%', background: 'var(--primary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontWeight: 700, fontSize: '1.25rem',
-        }}>
+      <div className="flex items-center gap-4 border-t border-slate-800 pt-8">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-slate-100">
           {article.author?.displayName?.[0]?.toUpperCase() || '?'}
         </div>
         <div>
-          <div style={{ fontWeight: 600 }}>{article.author?.displayName}</div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Автор статьи</div>
+          <div className="font-semibold text-slate-100">{article.author?.displayName}</div>
+          <div className="text-sm text-slate-400">Автор статьи</div>
         </div>
       </div>
 
-      {/* Comments */}
       <Comments articleId={articleId} />
     </article>
   );

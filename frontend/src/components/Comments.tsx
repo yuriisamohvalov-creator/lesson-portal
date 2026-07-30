@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import Link from 'next/link';
 
 interface Comment {
   id: string;
@@ -57,36 +58,21 @@ export function Comments({ articleId }: { articleId: string }) {
   };
 
   return (
-    <section style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
-      <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem', fontWeight: 600 }}>
-        Комментарии ({comments.length})
-      </h2>
+    <section className="mt-12 space-y-4 border-t border-slate-800 pt-8">
+      <h2 className="text-xl font-semibold text-slate-100">Комментарии ({comments.length})</h2>
 
-      {/* Comment form */}
       {user ? (
-        <form onSubmit={handleSubmit} style={{ marginBottom: '1.5rem' }}>
-          {error && (
-            <div style={{ color: 'var(--danger)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="mb-6 space-y-2">
+          {error && <div className="text-sm text-rose-400">{error}</div>}
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Напишите комментарий..."
             rows={3}
             required
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              resize: 'vertical',
-              fontSize: '0.95rem',
-              lineHeight: 1.5,
-            }}
+            className="w-full resize-y rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
           />
-          <div style={{ marginTop: '0.5rem', textAlign: 'right' }}>
+          <div className="text-right">
             <button
               type="submit"
               className="btn btn-primary"
@@ -97,43 +83,36 @@ export function Comments({ articleId }: { articleId: string }) {
           </div>
         </form>
       ) : (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-          <a href="/auth/login">Войдите</a>, чтобы оставить комментарий.
+        <p className="mb-6 text-sm text-slate-400">
+          <Link href="/auth/login" className="text-indigo-400 no-underline hover:text-indigo-300">
+            Войдите
+          </Link>
+          , чтобы оставить комментарий.
         </p>
       )}
 
-      {/* Comments list */}
       {loading ? (
-        <p style={{ color: 'var(--text-muted)' }}>Загрузка комментариев...</p>
+        <p className="text-slate-400">Загрузка комментариев...</p>
       ) : comments.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>Пока нет комментариев. Будьте первым!</p>
+        <p className="text-slate-400">Пока нет комментариев. Будьте первым!</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="flex flex-col gap-3">
           {comments.map((comment) => (
             <div
               key={comment.id}
-              style={{
-                padding: '1rem',
-                background: '#f9fafb',
-                borderRadius: 'var(--radius)',
-                border: '1px solid var(--border)',
-              }}
+              className="rounded-xl border border-slate-800 bg-slate-900/70 p-4"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%', background: 'var(--primary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'white', fontWeight: 600, fontSize: '0.75rem',
-                  }}>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-slate-100">
                     {comment.author?.displayName?.[0]?.toUpperCase() || '?'}
                   </div>
-                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                  <span className="text-sm font-medium text-slate-200">
                     {comment.author?.displayName}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <time style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <div className="flex items-center gap-3">
+                  <time className="text-xs text-slate-500">
                     {new Date(comment.createdAt).toLocaleDateString('ru-RU', {
                       day: 'numeric', month: 'short', year: 'numeric',
                       hour: '2-digit', minute: '2-digit',
@@ -141,18 +120,16 @@ export function Comments({ articleId }: { articleId: string }) {
                   </time>
                   {user && (user.id === comment.authorId || user.role === 'ADMIN') && (
                     <button
+                      type="button"
                       onClick={() => handleDelete(comment.id)}
-                      style={{
-                        background: 'none', border: 'none', color: 'var(--danger)',
-                        cursor: 'pointer', fontSize: '0.75rem', padding: 0,
-                      }}
+                      className="cursor-pointer border-0 bg-transparent p-0 text-xs text-rose-400 hover:text-rose-300"
                     >
                       Удалить
                     </button>
                   )}
                 </div>
               </div>
-              <p style={{ fontSize: '0.95rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
                 {comment.body}
               </p>
             </div>

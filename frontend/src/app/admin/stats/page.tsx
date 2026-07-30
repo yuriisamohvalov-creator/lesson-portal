@@ -24,12 +24,12 @@ export default function AdminStatsPage() {
       .finally(() => setLoading(false));
   }, [user, authLoading, router]);
 
-  if (authLoading || loading) return <div>Загрузка...</div>;
-  if (!stats) return <div>Ошибка загрузки</div>;
+  if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
+  if (!stats) return <div className="text-rose-400">Ошибка загрузки</div>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Админ-панель</h1>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold text-slate-100">Админ-панель</h1>
       <AdminNav />
       <div className="status-bar">
         <div className="stat">
@@ -49,19 +49,19 @@ export default function AdminStatsPage() {
           <div className="stat-label">Видео</div>
         </div>
       </div>
-      <div className="grid grid-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="card">
-          <h3>Пользователи по ролям</h3>
-          <p>USER: {stats.users.byRole.USER}</p>
-          <p>MODERATOR: {stats.users.byRole.MODERATOR}</p>
-          <p>ADMIN: {stats.users.byRole.ADMIN}</p>
+          <h3 className="mb-2 font-semibold text-slate-100">Пользователи по ролям</h3>
+          <p className="text-sm text-slate-300">USER: {stats.users.byRole.USER}</p>
+          <p className="text-sm text-slate-300">MODERATOR: {stats.users.byRole.MODERATOR}</p>
+          <p className="text-sm text-slate-300">ADMIN: {stats.users.byRole.ADMIN}</p>
         </div>
         <div className="card">
-          <h3>Статьи по статусам</h3>
-          <p>DRAFT: {stats.articles.byStatus.DRAFT}</p>
-          <p>PENDING: {stats.articles.byStatus.PENDING}</p>
-          <p>PUBLISHED: {stats.articles.byStatus.PUBLISHED}</p>
-          <p>REJECTED: {stats.articles.byStatus.REJECTED}</p>
+          <h3 className="mb-2 font-semibold text-slate-100">Статьи по статусам</h3>
+          <p className="text-sm text-slate-300">DRAFT: {stats.articles.byStatus.DRAFT}</p>
+          <p className="text-sm text-slate-300">PENDING: {stats.articles.byStatus.PENDING}</p>
+          <p className="text-sm text-slate-300">PUBLISHED: {stats.articles.byStatus.PUBLISHED}</p>
+          <p className="text-sm text-slate-300">REJECTED: {stats.articles.byStatus.REJECTED}</p>
         </div>
       </div>
     </div>
