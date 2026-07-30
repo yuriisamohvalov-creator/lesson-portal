@@ -51,12 +51,15 @@ ON CONFLICT(stack_name, environment_id) DO UPDATE SET
 "
 
 echo "=== Sync stack in Dockhand ==="
-curl -sf -X POST "$DOCKHAND_URL/api/stacks/$STACK_NAME/deploy?env=$ENV_ID" \
+# Avoid pipefail SIGPIPE from `curl | head` failing the whole deploy after a successful up.
+set +o pipefail
+curl -sS -X POST "$DOCKHAND_URL/api/stacks/$STACK_NAME/deploy?env=$ENV_ID" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
   -d '{"pull": false, "build": false, "forceRecreate": false}' \
   | head -c 500 || echo "(Dockhand sync skipped)"
 echo
+set -o pipefail
 
 echo "=== Waiting for backend health ==="
 for i in $(seq 1 60); do
@@ -77,3 +80,4 @@ $COMPOSE exec -T backend npx prisma migrate deploy
 
 echo "=== Done ==="
 $COMPOSE ps
+exit 0

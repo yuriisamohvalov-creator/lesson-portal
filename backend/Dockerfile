@@ -11,6 +11,7 @@ CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
 
 # debian slim so runtime matches binaryTargets debian-openssl-3.0.x
 FROM node:22-slim AS builder
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_OPTIONS=--max-old-space-size=2048
 ENV npm_config_registry=https://registry.npmjs.org/

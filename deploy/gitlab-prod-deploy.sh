@@ -153,3 +153,4 @@ remote_ssh "set -euo pipefail; cd '$DEPLOY_DIR'; chmod +x deploy/dockhand-deploy
 
 echo "=== Prod deploy finished ==="
 echo "URL: https://lessons.samoh.ru"
+exit 0
