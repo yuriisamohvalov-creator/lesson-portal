@@ -63,6 +63,7 @@ backend:check:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "version2"
 
 frontend:check:
   stage: test
@@ -76,6 +77,7 @@ frontend:check:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "version2"
 
 # --- Deploy: local dev stack on runner host (SER9) ---
 
@@ -85,6 +87,10 @@ deploy:local:
   needs:
     - job: backend:check
     - job: frontend:check
+  variables:
+    # Replace the live compose project (same ports 3001/3002)
+    LOCAL_DEPLOY_DIR: "/home/ysamohvalov/project/lessons-portal"
+    LOCAL_ENV_FILE: "/home/ysamohvalov/project/lessons-portal/.env"
   script:
     - bash deploy/gitlab-local-deploy.sh
   environment:
@@ -92,6 +98,7 @@ deploy:local:
     url: http://localhost:3002
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH == "version2"
 
 # --- Deploy: stable prod on brix-pc ---
 
