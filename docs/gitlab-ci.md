@@ -11,8 +11,10 @@
 Один job = один `npm ci` (lint+test/build вместе), shallow clone `GIT_DEPTH=50`.
 Runner: 5× shell на SER9, tag `lessons-portal`, **`concurrent = 2`** (не 5: иначе параллельные
 `prisma generate` с heap 8 GiB съедают RAM и jobs зависают).
-`PRISMA_SKIP_POSTINSTALL_GENERATE=true` + `NODE_OPTIONS=--max-old-space-size=2048`,
-явный `npx prisma generate` после `npm ci` (скрипты включены — иначе не скачиваются engines),
+`PRISMA_SKIP_POSTINSTALL_GENERATE=true` + `NODE_OPTIONS=--max-old-space-size=2048 --dns-result-order=ipv4first`,
+явный `npx prisma generate` после `npm ci` (скрипты включены — иначе не скачиваются engines).
+В `schema.prisma` только `binaryTargets = ["native"]` (лишний `linux-musl` заставлял CI
+скачивать engine с CDN и зависать). Alpine-образы делают `prisma generate` внутри build.
 `resource_group: npm-backend` сериализует backend-сборки.
 
 ### npm cache (SER9)

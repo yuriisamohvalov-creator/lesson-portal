@@ -39,12 +39,12 @@ variables:
   npm_config_prefer_offline: "true"
   npm_config_fund: "false"
   npm_config_audit: "false"
-  # Skip @prisma/client postinstall generate (still download engines via scripts).
-  # Cap Node heap: Prisma defaults to --max-old-space-size=8096 and OOMs the host
-  # when several jobs run in parallel.
+  # Skip @prisma/client postinstall generate (engines still download via scripts).
+  # Cap heap: Prisma generator defaults to 8096 and OOMs under concurrent jobs.
+  # Prefer IPv4: IPv6 to binaries.prisma.sh is broken on this host and stalls downloads.
   PRISMA_SKIP_POSTINSTALL_GENERATE: "true"
   PRISMA_HIDE_UPDATE_MESSAGE: "true"
-  NODE_OPTIONS: "--max-old-space-size=2048"
+  NODE_OPTIONS: "--max-old-space-size=2048 --dns-result-order=ipv4first"
 
 # --- Test (shell runner, Node.js on host) ---
 
