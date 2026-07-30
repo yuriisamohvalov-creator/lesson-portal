@@ -138,7 +138,7 @@ describe('Articles (e2e)', () => {
 
     it('should approve article by moderator', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/api/moderation/api/articles/${articleId}/approve`)
+        .post(`/api/moderation/articles/${articleId}/approve`)
         .set('Authorization', `Bearer ${modToken}`)
         .expect(200);
 
@@ -184,7 +184,7 @@ describe('Articles (e2e)', () => {
 
     it('should reject article with comment', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/api/moderation/api/articles/${rejectArticleId}/reject`)
+        .post(`/api/moderation/articles/${rejectArticleId}/reject`)
         .set('Authorization', `Bearer ${modToken}`)
         .send({ comment: 'Needs improvement' })
         .expect(200);
@@ -206,7 +206,7 @@ describe('Articles (e2e)', () => {
         .expect(200);
 
       await request(app.getHttpServer())
-        .post(`/api/moderation/api/articles/${createRes.body.id}/reject`)
+        .post(`/api/moderation/articles/${createRes.body.id}/reject`)
         .set('Authorization', `Bearer ${modToken}`)
         .send({ comment: '' })
         .expect(400);
@@ -277,7 +277,7 @@ describe('Articles (e2e)', () => {
   describe('Moderation history', () => {
     it('should return moderation history for article', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/api/moderation/api/articles/${articleId}/history`)
+        .get(`/api/moderation/articles/${articleId}/history`)
         .set('Authorization', `Bearer ${modToken}`)
         .expect(200);
 
