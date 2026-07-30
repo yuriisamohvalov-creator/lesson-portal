@@ -119,6 +119,8 @@ cp /path/to/lesson-portal/.env.example /home/ysamohvalov/service/lessons-portal-
 
 **Если frontend build падает с `npm error Exit handler never called!`:** обычно OOM на brix (мало RAM, нет swap, параллельный build). Скрипт деплоя собирает `backend` и `frontend` последовательно; в образе frontend отключена загрузка браузеров Playwright. На хосте желательно ≥6 Gi available перед deploy.
 
+**Если build падает с `ECONNREFUSED 127.0.0.1:4873`:** в `package-lock.json` попали URL Verdaccio с runner. Lockfile должен резолвить на `https://registry.npmjs.org/` (Verdaccio только для CI `npm_config_registry` на SER9). Dockerfiles принудительно ставят public registry.
+
 ### Процесс
 
 1. `rsync` кода на brix-pc (без `.env`, `node_modules`)

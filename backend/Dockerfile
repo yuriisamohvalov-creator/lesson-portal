@@ -12,6 +12,7 @@ CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
 FROM node:22-alpine AS builder
 WORKDIR /app
 ENV NODE_OPTIONS=--max-old-space-size=2048
+ENV npm_config_registry=https://registry.npmjs.org/
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund
@@ -22,6 +23,7 @@ RUN npm run build
 FROM node:22-alpine AS runner
 RUN apk add --no-cache openssl wget
 WORKDIR /app
+ENV npm_config_registry=https://registry.npmjs.org/
 COPY package*.json ./
 RUN npm ci --omit=dev && npm install --no-save prisma dotenv
 COPY --from=builder /app/dist ./dist

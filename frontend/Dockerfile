@@ -16,6 +16,8 @@ ENV NEXT_PUBLIC_MAX_VIDEO_SIZE_MB=$NEXT_PUBLIC_MAX_VIDEO_SIZE_MB
 # Playwright is a devDependency for e2e; never download browsers in image builds.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV NODE_OPTIONS=--max-old-space-size=2048
+# Prod hosts (brix) do not run Verdaccio; never inherit CI npm_config_registry.
+ENV npm_config_registry=https://registry.npmjs.org/
 COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund
