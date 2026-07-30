@@ -10,11 +10,6 @@ SSH_TARGET="${SSH_USER}@${SSH_HOST}"
 SSH_IDENTITY=""
 TMP_KEY=""
 
-cleanup() {
-  [[ -n "${TMP_KEY:-}" && -f "${TMP_KEY:-}" ]] && rm -f "$TMP_KEY"
-}
-trap cleanup EXIT
-
 # Image tags from CI (build:images job) — pin immutable commit SHA
 REGISTRY_IMAGE="${CI_REGISTRY_IMAGE:-}"
 IMAGE_TAG="${CI_COMMIT_SHA:-latest}"
@@ -95,22 +90,6 @@ key_is_usable() {
   ssh-keygen -y -f "$key" -P "" >/dev/null 2>&1
 }
 
-normalize_key_file() {
-  local src="$1"
-  local dest="$2"
-  tr -d '\r' < "$src" > "$dest"
-  [[ -s "$dest" ]] || return 1
-  [[ "$(tail -c1 "$dest" | wc -l)" -eq 1 ]] || echo >> "$dest"
-  chmod 600 "$dest"
-}
-
-key_is_usable() {
-  local key="$1"
-  [[ -f "$key" ]] || return 1
-  # Reject passphrase-protected / corrupt keys without prompting
-  ssh-keygen -y -f "$key" -P "" >/dev/null 2>&1
-}
-
 setup_ssh() {
   mkdir -p ~/.ssh
   chmod 700 ~/.ssh
@@ -172,22 +151,48 @@ setup_ssh() {
 
 setup_ssh
 
-echo "=== Sync files to $SSH_TARGET ==="
+remote_ssh() {
+  ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_IDENTITY" "$SSH_TARGET" "$@"
+}
+
+echo "=== Sync deploy artifacts to ${SSH_USER}@${SSH_HOST}:$DEPLOY_DIR ==="
+remote_ssh "mkdir -p '$DEPLOY_DIR/deploy' '$DEPLOY_DIR/nginx'"
+
 RSYNC_RSH="ssh -o BatchMode=yes -o IdentitiesOnly=yes -i ${SSH_IDENTITY}"
-rsync -az --delete \
+# Minimal tree: compose + deploy scripts (+ nginx helpers). Never sync .env / .env.runtime.
+rsync -az \
   -e "$RSYNC_RSH" \
-  --exclude node_modules \
-  --exclude .next \
-  --exclude .git \
-  --exclude backend/node_modules \
-  --exclude frontend/node_modules \
-  --exclude .env \
-  --exclude docker-compose.override.yml \
-  "$SOURCE_DIR/" "$SSH_TARGET:$DEPLOY_DIR/"
+  "$SOURCE_DIR/docker-compose.yml" \
+  "$SOURCE_DIR/docker-compose.prod.yml" \
+  "${SSH_TARGET}:${DEPLOY_DIR}/"
+
+rsync -az \
+  -e "$RSYNC_RSH" \
+  "$SOURCE_DIR/deploy/dockhand-deploy.sh" \
+  "$SOURCE_DIR/deploy/secrets.sh" \
+  "$SOURCE_DIR/deploy/deploy-brix-pc.sh" \
+  "${SSH_TARGET}:${DEPLOY_DIR}/deploy/"
+
+if [[ -d "$SOURCE_DIR/nginx" ]]; then
+  rsync -az \
+    -e "$RSYNC_RSH" \
+    "$SOURCE_DIR/nginx/" \
+    "${SSH_TARGET}:${DEPLOY_DIR}/nginx/"
+fi
+
+echo "=== Verify remote deploy script ==="
+remote_ssh "set -e; test -d '$DEPLOY_DIR'; test -f '$DEPLOY_DIR/deploy/dockhand-deploy.sh'; test -f '$DEPLOY_DIR/deploy/secrets.sh'; ls -la '$DEPLOY_DIR/deploy/'"
 
 echo "=== Run prod deploy on brix-pc ==="
-ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_IDENTITY" "$SSH_TARGET" \
-  "chmod +x '$DEPLOY_DIR/deploy/dockhand-deploy.sh' && '$DEPLOY_DIR/deploy/dockhand-deploy.sh'"
+# Forward registry credentials + image pins; master key stays only on brix.
+remote_ssh "set -euo pipefail; cd '$DEPLOY_DIR'; \
+  chmod +x deploy/dockhand-deploy.sh deploy/secrets.sh; \
+  export BACKEND_IMAGE='${BACKEND_IMAGE}'; \
+  export FRONTEND_IMAGE='${FRONTEND_IMAGE}'; \
+  export CI_REGISTRY='${CI_REGISTRY:-}'; \
+  export CI_REGISTRY_USER='${CI_REGISTRY_USER:-}'; \
+  export CI_REGISTRY_PASSWORD='${CI_REGISTRY_PASSWORD:-}'; \
+  bash deploy/dockhand-deploy.sh"
 
 echo "=== Prod deploy finished ==="
 echo "URL: https://lessons.samoh.ru"
