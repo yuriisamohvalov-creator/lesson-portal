@@ -96,17 +96,21 @@ FRONTEND_URL=https://lessons.samoh.ru
 
 ### CI/CD Variables
 
-| Variable | Type | Описание |
-|----------|------|----------|
-| `BRIX_PC_HOST` | Variable | `192.168.150.90` |
-| `BRIX_PC_USER` | Variable | `ysamohvalov` |
-| `BRIX_PC_DEPLOY_DIR` | Variable (не File!) | `/home/ysamohvalov/service/lessons-portal` |
-| `SSH_PRIVATE_KEY` | File (optional) | иначе host key runner’а |
-| `SSH_KNOWN_HOSTS` | optional | `ssh-keyscan` |
+| Variable | Type | Пример | Описание |
+|----------|------|--------|----------|
+| `BRIX_PC_HOST` | Variable | `brix-pc` | SSH host |
+| `BRIX_PC_USER` | Variable | `ysamohvalov` | SSH user |
+| `BRIX_PC_DEPLOY_DIR` | Variable | `/home/ysamohvalov/service/lessons-portal` | Путь на сервере |
+| `SSH_PRIVATE_KEY` | **File** (optional) | — | Приватный ключ для SSH на brix-pc. Если битый/с паролем — job падает на `error in libcrypto`; тогда используется `~/.ssh/id_ed25519` у `gitlab-runner` |
+| `SSH_KNOWN_HOSTS` | Variable (optional) | output of `ssh-keyscan brix-pc` | Host key |
 
 `CI_REGISTRY*` задаёт GitLab автоматически, если registry включён.
 
-### Процесс `deploy:prod`
+**Если `deploy:prod` падает с `error in libcrypto`:** переменная `SSH_PRIVATE_KEY` повреждена (часто вставили как Variable вместо File, или RSA с passphrase). Варианты:
+1. Пересоздать File variable: содержимое `-----BEGIN OPENSSH PRIVATE KEY-----` … без passphrase, с реальными переводами строк.
+2. Либо удалить/очистить `SSH_PRIVATE_KEY` — скрипт возьмёт host-ключ `/home/gitlab-runner/.ssh/id_ed25519` (публичный ключ должен быть в `authorized_keys` на brix-pc).
+
+### Процесс
 
 1. `build:images` — build + push backend/frontend  
 2. rsync на brix: только `docker-compose*.yml`, `deploy/*.sh`, `nginx/` (без исходников npm)  
