@@ -42,7 +42,10 @@ resolve_deploy_dir() {
 DEPLOY_DIR="$(resolve_deploy_dir)"
 
 cleanup() {
-  [[ -n "${TMP_KEY:-}" && -f "${TMP_KEY:-}" ]] && rm -f "$TMP_KEY"
+  if [[ -n "${TMP_KEY:-}" && -f "${TMP_KEY:-}" ]]; then
+    rm -f "$TMP_KEY" || true
+  fi
+  return 0
 }
 trap cleanup EXIT
 
