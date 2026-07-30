@@ -16,6 +16,7 @@ ENV NEXT_PUBLIC_MAX_VIDEO_SIZE_MB=$NEXT_PUBLIC_MAX_VIDEO_SIZE_MB
 COPY package*.json ./
 RUN npm ci
 COPY . .
+RUN mkdir -p public
 RUN npm run build
 
 FROM node:22-slim AS runner
