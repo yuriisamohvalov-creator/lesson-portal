@@ -5,6 +5,9 @@ set -euo pipefail
 SOURCE_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$SOURCE_DIR"
 
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
 : "${CI_REGISTRY:?CI_REGISTRY is required}"
 : "${CI_REGISTRY_IMAGE:?CI_REGISTRY_IMAGE is required}"
 : "${CI_REGISTRY_USER:?CI_REGISTRY_USER is required}"
