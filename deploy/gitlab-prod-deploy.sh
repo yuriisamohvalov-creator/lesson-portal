@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Deploy stable release to brix-pc (lessons.samoh.ru).
+# CI builds/pushes images; this script syncs compose+deploy scripts and pulls on brix.
 set -euo pipefail
 
 SOURCE_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -9,6 +10,19 @@ SSH_TARGET="${SSH_USER}@${SSH_HOST}"
 SSH_IDENTITY=""
 TMP_KEY=""
 
+# Image tags from CI (build:images job) — pin immutable commit SHA
+REGISTRY_IMAGE="${CI_REGISTRY_IMAGE:-}"
+IMAGE_TAG="${CI_COMMIT_SHA:-latest}"
+MOVABLE_TAG="main"
+if [[ -n "${CI_COMMIT_TAG:-}" ]]; then
+  MOVABLE_TAG="$CI_COMMIT_TAG"
+elif [[ "${CI_COMMIT_BRANCH:-}" == "main" ]]; then
+  MOVABLE_TAG="main"
+fi
+
+BACKEND_IMAGE="${BACKEND_IMAGE:-${REGISTRY_IMAGE}/backend:${IMAGE_TAG}}"
+FRONTEND_IMAGE="${FRONTEND_IMAGE:-${REGISTRY_IMAGE}/frontend:${IMAGE_TAG}}"
+
 # Resolve deploy dir: trim; if CI File-variable path was used by mistake, read contents.
 resolve_deploy_dir() {
   local default_dir="/home/ysamohvalov/service/lessons-portal"
@@ -16,7 +30,6 @@ resolve_deploy_dir() {
   raw="${raw#"${raw%%[![:space:]]*}"}"
   raw="${raw%"${raw##*[![:space:]]}"}"
 
-  # GitLab File variables expand to a temp file path, not the file contents.
   if [[ -f "$raw" ]]; then
     echo "WARNING: BRIX_PC_DEPLOY_DIR is a File variable (value is a temp path). Reading contents." >&2
     local content
@@ -54,6 +67,13 @@ echo "Source:  $SOURCE_DIR"
 echo "Target:  $DEPLOY_DIR"
 echo "Branch:  ${CI_COMMIT_REF_NAME:-unknown}"
 echo "Commit:  ${CI_COMMIT_SHORT_SHA:-unknown}"
+echo "Backend: $BACKEND_IMAGE"
+echo "Frontend:$FRONTEND_IMAGE"
+
+if [[ -z "${CI_REGISTRY_IMAGE:-}" ]]; then
+  echo "ERROR: CI_REGISTRY_IMAGE is empty; enable GitLab Container Registry for this project"
+  exit 1
+fi
 
 normalize_key_file() {
   local src="$1"
@@ -135,25 +155,46 @@ remote_ssh() {
   ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_IDENTITY" "$SSH_TARGET" "$@"
 }
 
-echo "=== Sync files to ${SSH_USER}@${SSH_HOST}:$DEPLOY_DIR ==="
+echo "=== Sync deploy artifacts to ${SSH_USER}@${SSH_HOST}:$DEPLOY_DIR ==="
+remote_ssh "mkdir -p '$DEPLOY_DIR/deploy' '$DEPLOY_DIR/nginx'"
+
 RSYNC_RSH="ssh -o BatchMode=yes -o IdentitiesOnly=yes -i ${SSH_IDENTITY}"
-rsync -az --delete \
+# Minimal tree: compose + deploy scripts (+ nginx helpers). Never sync .env / .env.runtime.
+rsync -az \
   -e "$RSYNC_RSH" \
-  --exclude node_modules \
-  --exclude .next \
-  --exclude .git \
-  --exclude backend/node_modules \
-  --exclude frontend/node_modules \
-  --exclude .env \
-  --exclude docker-compose.override.yml \
-  "$SOURCE_DIR/" "${SSH_TARGET}:${DEPLOY_DIR}/"
+  "$SOURCE_DIR/docker-compose.yml" \
+  "$SOURCE_DIR/docker-compose.prod.yml" \
+  "${SSH_TARGET}:${DEPLOY_DIR}/"
+
+rsync -az \
+  -e "$RSYNC_RSH" \
+  "$SOURCE_DIR/deploy/dockhand-deploy.sh" \
+  "$SOURCE_DIR/deploy/secrets.sh" \
+  "$SOURCE_DIR/deploy/deploy-brix-pc.sh" \
+  "${SSH_TARGET}:${DEPLOY_DIR}/deploy/"
+
+if [[ -d "$SOURCE_DIR/nginx" ]]; then
+  rsync -az \
+    -e "$RSYNC_RSH" \
+    "$SOURCE_DIR/nginx/" \
+    "${SSH_TARGET}:${DEPLOY_DIR}/nginx/"
+fi
 
 echo "=== Verify remote deploy script ==="
-remote_ssh "set -e; test -d '$DEPLOY_DIR'; test -f '$DEPLOY_DIR/deploy/dockhand-deploy.sh'; ls -la '$DEPLOY_DIR/deploy/dockhand-deploy.sh'"
+remote_ssh "set -e; test -d '$DEPLOY_DIR'; test -f '$DEPLOY_DIR/deploy/dockhand-deploy.sh'; test -f '$DEPLOY_DIR/deploy/secrets.sh'; ls -la '$DEPLOY_DIR/deploy/'"
 
 echo "=== Run prod deploy on brix-pc ==="
-remote_ssh "set -euo pipefail; cd '$DEPLOY_DIR'; chmod +x deploy/dockhand-deploy.sh; bash deploy/dockhand-deploy.sh"
+# Forward registry credentials + image pins; master key stays only on brix.
+remote_ssh "set -euo pipefail; cd '$DEPLOY_DIR'; \
+  chmod +x deploy/dockhand-deploy.sh deploy/secrets.sh; \
+  export BACKEND_IMAGE='${BACKEND_IMAGE}'; \
+  export FRONTEND_IMAGE='${FRONTEND_IMAGE}'; \
+  export CI_REGISTRY='${CI_REGISTRY:-}'; \
+  export CI_REGISTRY_USER='${CI_REGISTRY_USER:-}'; \
+  export CI_REGISTRY_PASSWORD='${CI_REGISTRY_PASSWORD:-}'; \
+  bash deploy/dockhand-deploy.sh"
 
 echo "=== Prod deploy finished ==="
 echo "URL: https://lessons.samoh.ru"
+echo "Images: $BACKEND_IMAGE / $FRONTEND_IMAGE (also tagged :${MOVABLE_TAG} in registry)"
 exit 0

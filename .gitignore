@@ -1,6 +1,8 @@
 tz/
 node_modules/
 .env
+.env.runtime
+.env.plain
 docker-compose.release.yml
 dist/
 .next/

@@ -1,4 +1,5 @@
-# Production overrides — build runner images, bind to localhost only
+# Production overrides — pull prebuilt images, bind to localhost only
+# BACKEND_IMAGE / FRONTEND_IMAGE come from .env.runtime (CI sets tags at deploy).
 services:
   postgres:
     restart: always
@@ -15,10 +16,10 @@ services:
 
   backend:
     restart: always
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: runner
+    # Drop base `build:` so prod never compiles on brix (Compose Spec reset).
+    build: !reset null
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be set in .env.runtime}
+    pull_policy: always
     environment:
       NODE_ENV: production
       FRONTEND_URL: ${FRONTEND_URL:-https://lessons.samoh.ru}
@@ -27,13 +28,9 @@ services:
 
   frontend:
     restart: always
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: runner
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://lessons.samoh.ru}
-        NEXT_PUBLIC_MAX_VIDEO_SIZE_MB: ${MAX_VIDEO_SIZE_MB:-5000}
+    build: !reset null
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must be set in .env.runtime}
+    pull_policy: always
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://lessons.samoh.ru}
