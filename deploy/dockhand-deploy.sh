@@ -30,7 +30,11 @@ mkdir -p "${MINIO_DATA_DIR:-minio_data}"
 
 echo "=== Build & up (docker compose) ==="
 cd "$PROJECT_DIR"
-$COMPOSE build
+# Sequential builds: brix has ~15Gi RAM, no swap, and many other stacks.
+# Parallel `compose build` OOMs frontend `npm ci` ("Exit handler never called").
+export COMPOSE_PARALLEL_LIMIT=1
+$COMPOSE build backend
+$COMPOSE build frontend
 $COMPOSE up -d --force-recreate
 
 echo "=== Render release compose for Dockhand ==="

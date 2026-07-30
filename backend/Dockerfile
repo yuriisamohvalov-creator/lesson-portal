@@ -11,8 +11,10 @@ CMD ["sh", "-c", "npx prisma generate && npm run start:dev"]
 
 FROM node:22-alpine AS builder
 WORKDIR /app
+ENV NODE_OPTIONS=--max-old-space-size=2048
 COPY package*.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
 COPY . .
 RUN npx prisma generate
 RUN npm run build

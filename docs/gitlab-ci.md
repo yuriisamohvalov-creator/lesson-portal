@@ -117,11 +117,13 @@ cp /path/to/lesson-portal/.env.example /home/ysamohvalov/service/lessons-portal-
 
 **Если `chmod: cannot access .../dockhand-deploy.sh`:** проверьте тип `BRIX_PC_DEPLOY_DIR` — должен быть **Variable**, не File.
 
+**Если frontend build падает с `npm error Exit handler never called!`:** обычно OOM на brix (мало RAM, нет swap, параллельный build). Скрипт деплоя собирает `backend` и `frontend` последовательно; в образе frontend отключена загрузка браузеров Playwright. На хосте желательно ≥6 Gi available перед deploy.
+
 ### Процесс
 
 1. `rsync` кода на brix-pc (без `.env`, `node_modules`)
 2. Запуск `deploy/dockhand-deploy.sh` на сервере
-3. Build образов, `docker compose up`, миграции Prisma
+3. Sequential image build, `docker compose up`, миграции Prisma
 
 ## 4. Workflow
 
