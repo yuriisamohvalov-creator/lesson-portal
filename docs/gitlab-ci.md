@@ -7,7 +7,9 @@
 | `deploy:local` | `develop` | автоматически после push | dev-стек на машине runner (SER9) |
 | `deploy:prod` | `main`, tags | **вручную** (Play) | prod на brix-pc → https://lessons.samoh.ru |
 
-Тесты (`backend:lint`, `backend:test`, `frontend:lint`) запускаются на MR и push в `develop` / `main`.
+Тесты (`backend:check`, `frontend:check`) запускаются на MR и push в `develop` / `main`.
+Один job = один `npm ci` (lint+test/build вместе), кэш `.npm/`, shallow clone `GIT_DEPTH=50`.
+Runner: `concurrent = 3` в `/etc/gitlab-runner/config.toml`.
 
 ## 1. GitLab Runner (shell, SER9)
 

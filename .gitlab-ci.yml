@@ -2,7 +2,7 @@
 #
 # Pipelines:
 #   develop  -> deploy:local   (dev stack on runner host)
-#   main     -> deploy:prod    (manual, stable release to brix-pc)
+#   main     -> deploy:prod    (stable release to brix-pc)
 #   tags     -> deploy:prod    (manual)
 #
 # Runner: shell executor on SER9, tag `lessons-portal`
@@ -16,38 +16,48 @@ default:
   tags:
     - lessons-portal
   interruptible: true
+  cache:
+    key:
+      files:
+        - backend/package-lock.json
+        - frontend/package-lock.json
+    paths:
+      - .npm/
+    policy: pull-push
 
 variables:
-  GIT_DEPTH: "0"
+  # Shallow clone is enough for CI; full history only when needed for release notes
+  GIT_DEPTH: "50"
   BRIX_PC_HOST: "192.168.150.90"
   BRIX_PC_USER: "ysamohvalov"
   BRIX_PC_DEPLOY_DIR: "/home/ysamohvalov/service/lessons-portal"
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  npm_config_prefer_offline: "true"
+  npm_config_fund: "false"
+  npm_config_audit: "false"
 
 # --- Test (shell runner, Node.js on host) ---
 
-backend:lint:
+backend:check:
   stage: test
   script:
-    - cd backend && npm ci && npx prisma generate && npx tsc --noEmit
+    - cd backend
+    - npm ci --prefer-offline --no-audit --no-fund
+    - npx prisma generate
+    - npx tsc --noEmit
+    - npm test -- --testPathPattern='\.spec\.ts$' --passWithNoTests --maxWorkers=2
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_BRANCH == "main"
 
-backend:test:
+frontend:check:
   stage: test
   script:
-    - cd backend && npm ci && npx prisma generate
-    - cd backend && npm test -- --testPathPattern='\.spec\.ts$' --passWithNoTests
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "develop"
-    - if: $CI_COMMIT_BRANCH == "main"
-
-frontend:lint:
-  stage: test
-  script:
-    - cd frontend && npm ci && npx tsc --noEmit && npm run build
+    - cd frontend
+    - npm ci --prefer-offline --no-audit --no-fund
+    - npx tsc --noEmit
+    - npm run build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -59,12 +69,8 @@ deploy:local:
   stage: deploy
   resource_group: local
   needs:
-    - job: backend:lint
-      optional: true
-    - job: backend:test
-      optional: true
-    - job: frontend:lint
-      optional: true
+    - job: backend:check
+    - job: frontend:check
   script:
     - bash deploy/gitlab-local-deploy.sh
   environment:
@@ -78,7 +84,9 @@ deploy:local:
 deploy:prod:
   stage: deploy
   resource_group: production
-  needs: []
+  needs:
+    - job: backend:check
+    - job: frontend:check
   script:
     - bash deploy/gitlab-prod-deploy.sh
   environment:
