@@ -4,6 +4,7 @@ node_modules/
 .env.runtime
 .env.plain
 docker-compose.release.yml
+backend/.ci-prisma-engines/
 dist/
 .next/
 frontend/test-results/

@@ -33,6 +33,29 @@ FRONTEND_REPO="${CI_REGISTRY_IMAGE}/frontend"
 echo "=== Docker login ${CI_REGISTRY} ==="
 echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
+echo "=== Stage Prisma engines for offline generate ==="
+ENG_DIR="backend/.ci-prisma-engines"
+mkdir -p "$ENG_DIR"
+# Prefer engines already present on the runner/workspace (CDN downloads hang here).
+SRC_ENG=""
+for candidate in \
+  backend/node_modules/prisma/node_modules/@prisma/engines \
+  /home/gitlab-runner/lessons-portal/backend/node_modules/prisma/node_modules/@prisma/engines \
+  "$HOME/.cache/prisma" 
+do
+  if [[ -f "$candidate/libquery_engine-debian-openssl-3.0.x.so.node" ]]; then
+    SRC_ENG="$candidate"
+    break
+  fi
+done
+if [[ -z "$SRC_ENG" ]]; then
+  echo "ERROR: no local Prisma engines found to seed image build" >&2
+  exit 1
+fi
+cp -a "$SRC_ENG/libquery_engine-debian-openssl-3.0.x.so.node" "$ENG_DIR/"
+cp -a "$SRC_ENG/schema-engine-debian-openssl-3.0.x" "$ENG_DIR/"
+ls -la "$ENG_DIR"
+
 echo "=== Build backend (${BACKEND_REPO}:${SHORT_SHA}) via ${NPM_REGISTRY} ==="
 docker build "${DOCKER_NETWORK_ARGS[@]}" \
   --target runner \

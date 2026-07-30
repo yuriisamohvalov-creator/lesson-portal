@@ -24,7 +24,12 @@ RUN npm ci --no-audit --no-fund --ignore-scripts \
     && npm rebuild argon2 \
     && npm install --no-save --no-audit --no-fund prisma@5.22.0
 COPY . .
-RUN npx prisma generate
+# Preseed query/schema engines from host CI cache (CDN downloads hang in this network)
+RUN mkdir -p node_modules/@prisma/engines node_modules/prisma/node_modules/@prisma/engines \
+    && cp -a .ci-prisma-engines/. node_modules/@prisma/engines/ \
+    && cp -a .ci-prisma-engines/. node_modules/prisma/node_modules/@prisma/engines/ \
+    && cp -a .ci-prisma-engines/libquery_engine-debian-openssl-3.0.x.so.node node_modules/prisma/ \
+    && npx prisma generate
 RUN npm run build
 
 FROM node:22-slim AS runner
@@ -38,12 +43,17 @@ ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
 COPY package*.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+COPY .ci-prisma-engines ./.ci-prisma-engines
 RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts \
     && npm rebuild argon2 \
     && npm install --no-save --no-audit --no-fund prisma dotenv \
-    && npx prisma generate
+    && mkdir -p node_modules/@prisma/engines node_modules/prisma/node_modules/@prisma/engines \
+    && cp -a .ci-prisma-engines/. node_modules/@prisma/engines/ \
+    && cp -a .ci-prisma-engines/. node_modules/prisma/node_modules/@prisma/engines/ \
+    && cp -a .ci-prisma-engines/libquery_engine-debian-openssl-3.0.x.so.node node_modules/prisma/ \
+    && npx prisma generate \
+    && rm -rf .ci-prisma-engines
 COPY --from=builder /app/dist ./dist
-# drop build toolchain from final image layer size isn't critical for now
 ENV NODE_ENV=production
 EXPOSE 3001
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
