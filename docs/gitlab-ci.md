@@ -103,9 +103,9 @@ cp /path/to/lesson-portal/.env.example /home/ysamohvalov/service/lessons-portal-
 
 | Variable | Type | Пример | Описание |
 |----------|------|--------|----------|
-| `BRIX_PC_HOST` | Variable | `brix-pc` | SSH host |
+| `BRIX_PC_HOST` | Variable | `192.168.150.90` | SSH host (IP; runner may not resolve `brix-pc`) |
 | `BRIX_PC_USER` | Variable | `ysamohvalov` | SSH user |
-| `BRIX_PC_DEPLOY_DIR` | Variable | `/home/ysamohvalov/service/lessons-portal` | Путь на сервере |
+| `BRIX_PC_DEPLOY_DIR` | Variable (не File!) | `/home/ysamohvalov/service/lessons-portal` | Путь на сервере. **Type must be Variable** — если File, CI подставит путь к tempfile и deploy сломается |
 | `SSH_PRIVATE_KEY` | **File** (optional) | — | Приватный ключ для SSH на brix-pc. Если битый/с паролем — job падает на `error in libcrypto`; тогда используется `~/.ssh/id_ed25519` у `gitlab-runner` |
 | `SSH_KNOWN_HOSTS` | Variable (optional) | output of `ssh-keyscan brix-pc` | Host key |
 
@@ -114,6 +114,8 @@ cp /path/to/lesson-portal/.env.example /home/ysamohvalov/service/lessons-portal-
 **Если `deploy:prod` падает с `error in libcrypto`:** переменная `SSH_PRIVATE_KEY` повреждена (часто вставили как Variable вместо File, или RSA с passphrase). Варианты:
 1. Пересоздать File variable: содержимое `-----BEGIN OPENSSH PRIVATE KEY-----` … без passphrase, с реальными переводами строк.
 2. Либо удалить/очистить `SSH_PRIVATE_KEY` — скрипт возьмёт host-ключ `/home/gitlab-runner/.ssh/id_ed25519` (публичный ключ должен быть в `authorized_keys` на brix-pc).
+
+**Если `chmod: cannot access .../dockhand-deploy.sh`:** проверьте тип `BRIX_PC_DEPLOY_DIR` — должен быть **Variable**, не File.
 
 ### Процесс
 

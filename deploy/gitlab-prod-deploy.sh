@@ -11,19 +11,30 @@ TMP_KEY=""
 
 # Resolve deploy dir: trim; if CI File-variable path was used by mistake, read contents.
 resolve_deploy_dir() {
-  local raw="${BRIX_PC_DEPLOY_DIR:-/home/ysamohvalov/service/lessons-portal}"
+  local default_dir="/home/ysamohvalov/service/lessons-portal"
+  local raw="${BRIX_PC_DEPLOY_DIR:-$default_dir}"
   raw="${raw#"${raw%%[![:space:]]*}"}"
   raw="${raw%"${raw##*[![:space:]]}"}"
+
+  # GitLab File variables expand to a temp file path, not the file contents.
   if [[ -f "$raw" ]]; then
-    echo "WARNING: BRIX_PC_DEPLOY_DIR points to a file (File variable?). Reading path from it." >&2
-    raw="$(tr -d '\r' < "$raw" | head -n1)"
-    raw="${raw#"${raw%%[![:space:]]*}"}"
-    raw="${raw%"${raw##*[![:space:]]}"}"
+    echo "WARNING: BRIX_PC_DEPLOY_DIR is a File variable (value is a temp path). Reading contents." >&2
+    local content
+    content="$(tr -d '\r' < "$raw" | head -n1)"
+    content="${content#"${content%%[![:space:]]*}"}"
+    content="${content%"${content##*[![:space:]]}"}"
+    if [[ "$content" == /* ]]; then
+      raw="$content"
+    else
+      echo "WARNING: File contents are not an absolute path; using default $default_dir" >&2
+      raw="$default_dir"
+    fi
   fi
+
   raw="${raw%/}"
   if [[ -z "$raw" || "$raw" != /* ]]; then
-    echo "ERROR: BRIX_PC_DEPLOY_DIR must be an absolute path, got: '${BRIX_PC_DEPLOY_DIR:-}'" >&2
-    exit 1
+    echo "WARNING: invalid BRIX_PC_DEPLOY_DIR; using default $default_dir" >&2
+    raw="$default_dir"
   fi
   printf '%s' "$raw"
 }
