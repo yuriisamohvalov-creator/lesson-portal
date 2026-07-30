@@ -17,8 +17,7 @@ ENV NODE_OPTIONS=--max-old-space-size=2048
 ENV npm_config_registry=https://registry.npmjs.org/
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npx prisma generate
 RUN npm run build
@@ -31,8 +30,7 @@ ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 COPY package*.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --no-audit --no-fund \
+RUN npm ci --omit=dev --no-audit --no-fund \
     && npm install --no-save prisma dotenv \
     && npx prisma generate
 COPY --from=builder /app/dist ./dist

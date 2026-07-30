@@ -19,8 +19,7 @@ ENV NODE_OPTIONS=--max-old-space-size=2048
 # Prod hosts (brix) do not run Verdaccio; never inherit CI npm_config_registry.
 ENV npm_config_registry=https://registry.npmjs.org/
 COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 COPY . .
 RUN mkdir -p public
 RUN npm run build

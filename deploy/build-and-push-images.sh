@@ -5,8 +5,8 @@ set -euo pipefail
 SOURCE_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$SOURCE_DIR"
 
-export DOCKER_BUILDKIT=1
-export COMPOSE_DOCKER_CLI_BUILD=1
+# Shell runners on SER9 may lack docker-buildx; use classic builder.
+export DOCKER_BUILDKIT=0
 
 : "${CI_REGISTRY:?CI_REGISTRY is required}"
 : "${CI_REGISTRY_IMAGE:?CI_REGISTRY_IMAGE is required}"
