@@ -5,8 +5,10 @@ set -euo pipefail
 SOURCE_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$SOURCE_DIR"
 
-# Shell runners on SER9 may lack docker-buildx; use classic builder.
+# Classic builder (no buildx). Host network + Verdaccio: npmjs from build containers is ~10s/pkg.
 export DOCKER_BUILDKIT=0
+NPM_REGISTRY="${NPM_REGISTRY:-http://127.0.0.1:4873}"
+DOCKER_NETWORK_ARGS=(--network=host)
 
 : "${CI_REGISTRY:?CI_REGISTRY is required}"
 : "${CI_REGISTRY_IMAGE:?CI_REGISTRY_IMAGE is required}"
@@ -31,9 +33,10 @@ FRONTEND_REPO="${CI_REGISTRY_IMAGE}/frontend"
 echo "=== Docker login ${CI_REGISTRY} ==="
 echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
-echo "=== Build backend (${BACKEND_REPO}:${SHORT_SHA}) ==="
-docker build \
+echo "=== Build backend (${BACKEND_REPO}:${SHORT_SHA}) via ${NPM_REGISTRY} ==="
+docker build "${DOCKER_NETWORK_ARGS[@]}" \
   --target runner \
+  --build-arg "NPM_REGISTRY=${NPM_REGISTRY}" \
   -t "${BACKEND_REPO}:${SHORT_SHA}" \
   -t "${BACKEND_REPO}:${CI_COMMIT_SHA}" \
   -t "${BACKEND_REPO}:${MOVABLE_TAG}" \
@@ -41,8 +44,9 @@ docker build \
   backend
 
 echo "=== Build frontend (${FRONTEND_REPO}:${SHORT_SHA}) ==="
-docker build \
+docker build "${DOCKER_NETWORK_ARGS[@]}" \
   --target runner \
+  --build-arg "NPM_REGISTRY=${NPM_REGISTRY}" \
   --build-arg "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" \
   --build-arg "NEXT_PUBLIC_MAX_VIDEO_SIZE_MB=${NEXT_PUBLIC_MAX_VIDEO_SIZE_MB}" \
   -t "${FRONTEND_REPO}:${SHORT_SHA}" \

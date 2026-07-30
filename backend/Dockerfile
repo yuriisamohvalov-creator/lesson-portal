@@ -14,7 +14,8 @@ FROM node:22-slim AS builder
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_OPTIONS=--max-old-space-size=2048
-ENV npm_config_registry=https://registry.npmjs.org/
+ARG NPM_REGISTRY=https://registry.npmjs.org/
+ENV npm_config_registry=$NPM_REGISTRY
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
@@ -25,7 +26,8 @@ RUN npm run build
 FROM node:22-slim AS runner
 RUN apt-get update -y && apt-get install -y openssl wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-ENV npm_config_registry=https://registry.npmjs.org/
+ARG NPM_REGISTRY=https://registry.npmjs.org/
+ENV npm_config_registry=$NPM_REGISTRY
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 COPY package*.json ./
 COPY prisma ./prisma
