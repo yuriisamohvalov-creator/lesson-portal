@@ -109,7 +109,11 @@ LOCAL_ENV_FILE=~/service/lessons-portal-local/.env \
 
 ## 6. Troubleshooting
 
-**Runner не подхватывает job** — проверьте tag `lessons-portal` у runner и что runner не paused.
+**Runner не подхватывает job** — проверьте tag `lessons-portal` у runner и что runner не paused. URL runner должен быть `http://gitlab.local` (не https). Токен — `glrt-...` из Settings → CI/CD → Runners.
+
+**403 Forbidden при polling jobs** — перерегистрируйте runner или обновите token в `/etc/gitlab-runner/config.toml`.
+
+**SSH на brix-pc из runner** — пользователь `gitlab-runner` не резолвит `brix-pc`; задайте `BRIX_PC_HOST=192.168.150.90` в CI variables. Добавьте deploy-ключ runner в `authorized_keys` на brix-pc.
 
 **Permission denied (docker)** — добавьте `gitlab-runner` в группу `docker`.
 
