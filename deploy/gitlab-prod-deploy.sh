@@ -5,7 +5,7 @@ set -euo pipefail
 SOURCE_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 DEPLOY_DIR="${BRIX_PC_DEPLOY_DIR:-/home/ysamohvalov/service/lessons-portal}"
 SSH_USER="${BRIX_PC_USER:-ysamohvalov}"
-SSH_HOST="${BRIX_PC_HOST:-brix-pc}"
+SSH_HOST="${BRIX_PC_HOST:-192.168.150.90}"
 SSH_TARGET="${SSH_USER}@${SSH_HOST}"
 
 echo "=== GitLab prod deploy -> $SSH_TARGET ==="

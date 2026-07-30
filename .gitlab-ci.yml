@@ -19,6 +19,9 @@ default:
 
 variables:
   GIT_DEPTH: "0"
+  BRIX_PC_HOST: "192.168.150.90"
+  BRIX_PC_USER: "ysamohvalov"
+  BRIX_PC_DEPLOY_DIR: "/home/ysamohvalov/service/lessons-portal"
 
 # --- Test (shell runner, Node.js on host) ---
 
