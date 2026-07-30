@@ -39,9 +39,12 @@ variables:
   npm_config_prefer_offline: "true"
   npm_config_fund: "false"
   npm_config_audit: "false"
-  # Avoid @prisma/client postinstall spawning parallel 8GB prisma generate
+  # Skip @prisma/client postinstall generate (still download engines via scripts).
+  # Cap Node heap: Prisma defaults to --max-old-space-size=8096 and OOMs the host
+  # when several jobs run in parallel.
   PRISMA_SKIP_POSTINSTALL_GENERATE: "true"
   PRISMA_HIDE_UPDATE_MESSAGE: "true"
+  NODE_OPTIONS: "--max-old-space-size=2048"
 
 # --- Test (shell runner, Node.js on host) ---
 
@@ -50,8 +53,9 @@ backend:check:
   resource_group: npm-backend
   script:
     - cd backend
-    # ignore-scripts: skip hung prisma postinstall; generate explicitly once
-    - npm ci --prefer-offline --no-audit --no-fund --ignore-scripts
+    # Keep scripts so @prisma/engines postinstall downloads binaries.
+    # PRISMA_SKIP_POSTINSTALL_GENERATE skips only client generate during install.
+    - npm ci --prefer-offline --no-audit --no-fund
     - npx prisma generate
     - npx tsc --noEmit
     - npm test -- --testPathPattern='\.spec\.ts$' --passWithNoTests --maxWorkers=2

@@ -10,8 +10,9 @@
 Тесты (`backend:check`, `frontend:check`) запускаются на MR и push в `develop` / `main`.
 Один job = один `npm ci` (lint+test/build вместе), shallow clone `GIT_DEPTH=50`.
 Runner: 5× shell на SER9, tag `lessons-portal`, **`concurrent = 2`** (не 5: иначе параллельные
-`prisma generate` postinstall съедают RAM и jobs зависают).
-`backend:check` использует `npm ci --ignore-scripts` + явный `npx prisma generate`,
+`prisma generate` с heap 8 GiB съедают RAM и jobs зависают).
+`PRISMA_SKIP_POSTINSTALL_GENERATE=true` + `NODE_OPTIONS=--max-old-space-size=2048`,
+явный `npx prisma generate` после `npm ci` (скрипты включены — иначе не скачиваются engines),
 `resource_group: npm-backend` сериализует backend-сборки.
 
 ### npm cache (SER9)
