@@ -22,7 +22,7 @@ GitLab `cache:` для `.npm/` на shell executor **не работал** (`Fai
 
 ```bash
 # Verdaccio
-cd /home/ysamohvalov/service/verdaccio && docker compose up -d
+cd /home/ysamohvalov/project/devops/verdaccio && docker compose up -d
 curl -sf http://127.0.0.1:4873/-/ping   # {}
 # UI: http://SER9:4873/
 ```
