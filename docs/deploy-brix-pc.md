@@ -1,4 +1,4 @@
-# Prod-деплой на brix-pc (Dockhand + nginx)
+# Prod-деплой на brix-pc (prebuilt images + encrypted .env)
 
 Домен: **https://lessons.samoh.ru**
 
@@ -10,62 +10,81 @@ Internet -> nginx (host, :443)
               ├─ /health -> localhost:3071
               └─ /*      -> localhost:3070 (Next.js frontend)
 
-Docker Compose (Dockhand / CLI):
+GitLab CI (SER9):
+  test → docker build/push → gitlab.local:5050/.../backend|frontend:<sha>
+
+brix-pc:
+  decrypt ENC(.env) → .env.runtime
+  docker pull + compose up --no-build
   postgres, redis, minio, backend, frontend
 ```
 
-API доступен по префиксу `/api` (например `/api/auth/login`, `/api/articles`).
-Swagger: `https://lessons.samoh.ru/api/docs`
+На проде **нет** `npm ci` / `compose build`. Только готовые образы и `.env`.
 
-## 1. Подготовка на brix-pc
+## 1. Подготовка на brix-pc (один раз)
 
 ```bash
-mkdir -p ~/service/lessons-portal
+mkdir -p ~/service/lessons-portal/deploy
+# после первого CI/rsync здесь появятся compose + deploy scripts
+
+# Мастер-ключ для ENC(...)
 cd ~/service/lessons-portal
-git clone git@github.com:yuriisamohvalov-creator/lesson-portal.git .
-cp .env.production.example .env
-# Отредактируйте .env — пароли, JWT-секреты, MINIO_DATA_DIR
-mkdir -p "$(grep '^MINIO_DATA_DIR=' .env | cut -d= -f2-)"
-nano .env
+./deploy/secrets.sh gen-key
+# → ~/.config/lessons-portal/master.key
 ```
 
-Сгенерировать секреты:
+Создать зашифрованный `.env`:
 
 ```bash
-openssl rand -hex 32   # JWT_SECRET
-openssl rand -hex 32   # JWT_REFRESH_SECRET
-openssl rand -hex 16   # POSTGRES_PASSWORD
-openssl rand -hex 16   # MINIO_ROOT_PASSWORD
+cp .env.production.example .env.plain
+nano .env.plain   # plaintext-секреты, MINIO_DATA_DIR, порты
+./deploy/secrets.sh encrypt-env .env.plain .env
+shred -u .env.plain
+mkdir -p "$(grep '^MINIO_DATA_DIR=' .env | cut -d= -f2- | tr -d '"')"
 ```
 
-## 2. Запуск через Docker Compose
+Сгенерировать plaintext до encrypt:
 
 ```bash
-chmod +x deploy/deploy-brix-pc.sh
+openssl rand -hex 32   # JWT_SECRET / JWT_REFRESH_SECRET
+openssl rand -hex 16   # POSTGRES_PASSWORD / MINIO_ROOT_PASSWORD
+```
+
+Registry login (если CI не передаёт job token):
+
+```bash
+docker login gitlab.local:5050
+# Deploy Token с read_registry
+```
+
+## 2. Обычный релиз
+
+Push/merge в `main` → pipeline:
+
+1. `backend:check` / `frontend:check`
+2. `build:images` — push в registry
+3. `deploy:prod` — rsync compose/scripts, на brix: decrypt → pull → up → migrate
+
+Вручную на brix (образы уже в registry):
+
+```bash
+cd ~/service/lessons-portal
+export BACKEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/backend:main
+export FRONTEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/frontend:main
+./deploy/dockhand-deploy.sh
+# или
 ./deploy/deploy-brix-pc.sh lessons.samoh.ru admin@samoh.ru
-```
-
-Или вручную:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose exec backend npx prisma migrate deploy
-docker compose exec backend npx prisma db seed   # опционально
 ```
 
 ## 3. Dockhand
 
-1. Открыть https://dockge.samoh.ru (Dockhand на порту 9988)
-2. **Stacks → Add stack** (или Git deploy)
-3. Путь: `/home/ysamohvalov/service/lessons-portal`
-4. Compose files:
-   - `docker-compose.yml`
-   - `docker-compose.prod.yml`
-5. Env file: `.env` (из `.env.production.example`)
-6. Deploy / Pull & redeploy
+1. https://dockge.samoh.ru (порт 9988)
+2. Stack path: `/home/ysamohvalov/service/lessons-portal`
+3. Compose: `docker-compose.yml` + `docker-compose.prod.yml`
+4. **Env file: `.env.runtime`** (результат decrypt; не ciphertext `.env`)
+5. Pull & redeploy (без build)
 
-> Для GitOps: подключить репозиторий `lesson-portal`, webhook на push в `main`.
+Deploy-скрипт сам обновляет `env_path` на `.env.runtime`.
 
 ## 4. Nginx (на хосте)
 
@@ -74,12 +93,6 @@ cd ~/service/lessons-portal/nginx
 sudo ./setup.sh lessons.samoh.ru admin@samoh.ru
 ```
 
-Скрипт:
-- копирует `portal.conf` в `/etc/nginx/sites-available/lessons-portal`
-- получает SSL-сертификат Let's Encrypt
-- перезагружает nginx
-
-Порты приложения (только localhost):
 | Сервис   | Порт |
 |----------|------|
 | Frontend | 3070 |
@@ -93,38 +106,32 @@ curl -sf https://lessons.samoh.ru/api/categories
 curl -I https://lessons.samoh.ru/
 ```
 
-Тестовые пользователи (после seed):
-
 | Email | Пароль | Роль |
 |-------|--------|------|
 | user@test.com | testpass123 | USER |
 | moderator@test.com | testpass123 | MODERATOR |
 | admin@test.com | testpass123 | ADMIN |
 
-## MinIO: каталог данных
-
-Путь на хосте задаётся переменной **`MINIO_DATA_DIR`** в `.env` (монтируется в контейнер как `/data`).
-
-Если MinIO раньше использовал Docker volume `minio_data`, перенесите данные один раз:
+## 6. Ротация секрета
 
 ```bash
-MINIO_DIR="$(grep '^MINIO_DATA_DIR=' .env | cut -d= -f2-)"
+# на машине с master.key
+./deploy/secrets.sh encrypt 'new-password'
+# вставить ENC(...) в .env на brix
+./deploy/dockhand-deploy.sh   # пересоберёт .env.runtime и recreate
+```
+
+Смена кода приложения = новый pipeline (новый image tag), не rebuild на brix.
+
+## MinIO: каталог данных
+
+`MINIO_DATA_DIR` в `.env` (можно plaintext). Миграция со старого volume:
+
+```bash
+MINIO_DIR="$(grep '^MINIO_DATA_DIR=' .env | cut -d= -f2- | tr -d '"')"
 mkdir -p "$MINIO_DIR"
 docker run --rm \
   -v lessons-portal_minio_data:/from \
   -v "$MINIO_DIR":/to \
   alpine sh -c "cp -a /from/. /to/"
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate minio
 ```
-
-## Обновление
-
-```bash
-cd ~/service/lessons-portal
-git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose exec backend npx prisma migrate deploy
-```
-
-Или через Dockhand: **Pull & redeploy**.

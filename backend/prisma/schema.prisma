@@ -1,9 +1,9 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
-  // native only: CI/dev run on debian; Alpine images generate inside the build
-  // (extra linux-musl target made host `prisma generate` hang on engine download).
-  binaryTargets   = ["native"]
+  // native for local/CI; debian-openssl-3.0.x for node:22-slim prod images
+  // (native alone can resolve to openssl-1.1.x from a stale build cache).
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

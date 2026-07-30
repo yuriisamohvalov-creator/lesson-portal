@@ -2,8 +2,8 @@
 #
 # Pipelines:
 #   develop  -> deploy:local   (dev stack on runner host)
-#   main     -> deploy:prod    (stable release to brix-pc)
-#   tags     -> deploy:prod    (manual)
+#   main     -> build:images + deploy:prod (registry → brix pull)
+#   tags     -> build:images + deploy:prod (manual)
 #
 # Runner: shell executor on SER9, tag `lessons-portal`
 # npm: Verdaccio proxy http://127.0.0.1:4873 + shared host cache
@@ -11,6 +11,7 @@
 
 stages:
   - test
+  - build
   - deploy
 
 # Avoid duplicate pipelines for the same commit (branch push + MR)
@@ -39,12 +40,10 @@ variables:
   npm_config_prefer_offline: "true"
   npm_config_fund: "false"
   npm_config_audit: "false"
-  # Skip @prisma/client postinstall generate (engines still download via scripts).
-  # Cap heap: Prisma generator defaults to 8096 and OOMs under concurrent jobs.
-  # Prefer IPv4: IPv6 to binaries.prisma.sh is broken on this host and stalls downloads.
   PRISMA_SKIP_POSTINSTALL_GENERATE: "true"
   PRISMA_HIDE_UPDATE_MESSAGE: "true"
   NODE_OPTIONS: "--max-old-space-size=2048 --dns-result-order=ipv4first"
+  NEXT_PUBLIC_API_URL: "https://lessons.samoh.ru"
 
 # --- Test (shell runner, Node.js on host) ---
 
@@ -53,8 +52,6 @@ backend:check:
   resource_group: npm-backend
   script:
     - cd backend
-    # Keep scripts so @prisma/engines postinstall downloads binaries.
-    # PRISMA_SKIP_POSTINSTALL_GENERATE skips only client generate during install.
     - npm ci --prefer-offline --no-audit --no-fund
     - npx prisma generate
     - npx tsc --noEmit
@@ -79,6 +76,21 @@ frontend:check:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "version2"
 
+# --- Build & push images to GitLab Container Registry ---
+
+build:images:
+  stage: build
+  resource_group: docker-build
+  needs:
+    - job: backend:check
+    - job: frontend:check
+  script:
+    - bash deploy/build-and-push-images.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG
+  timeout: 45m
+
 # --- Deploy: local dev stack on runner host (SER9) ---
 
 deploy:local:
@@ -88,8 +100,6 @@ deploy:local:
     - job: backend:check
     - job: frontend:check
   variables:
-    # Runner-owned tree; compose project name stays "lessons-portal" (dir basename)
-    # and replaces the live stack on :3001/:3002.
     LOCAL_DEPLOY_DIR: "/home/gitlab-runner/lessons-portal"
     LOCAL_ENV_FILE: "/home/ysamohvalov/project/lessons-portal/.env"
   script:
@@ -101,14 +111,13 @@ deploy:local:
     - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_BRANCH == "version2"
 
-# --- Deploy: stable prod on brix-pc ---
+# --- Deploy: pull prebuilt images on brix-pc ---
 
 deploy:prod:
   stage: deploy
   resource_group: production
   needs:
-    - job: backend:check
-    - job: frontend:check
+    - job: build:images
   script:
     - bash deploy/gitlab-prod-deploy.sh
   environment:
@@ -119,3 +128,4 @@ deploy:prod:
       when: on_success
     - if: $CI_COMMIT_TAG
       when: manual
+  timeout: 30m

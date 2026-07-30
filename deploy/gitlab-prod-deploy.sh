@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Deploy stable release to brix-pc (lessons.samoh.ru).
+# CI builds/pushes images; this script syncs compose+deploy scripts and pulls on brix.
 set -euo pipefail
 
 SOURCE_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-DEPLOY_DIR="${BRIX_PC_DEPLOY_DIR:-/home/ysamohvalov/service/lessons-portal}"
 SSH_USER="${BRIX_PC_USER:-ysamohvalov}"
 SSH_HOST="${BRIX_PC_HOST:-192.168.150.90}"
 SSH_TARGET="${SSH_USER}@${SSH_HOST}"
@@ -15,11 +15,85 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "=== GitLab prod deploy -> $SSH_TARGET ==="
+# Image tags from CI (build:images job) — pin immutable commit SHA
+REGISTRY_IMAGE="${CI_REGISTRY_IMAGE:-}"
+IMAGE_TAG="${CI_COMMIT_SHA:-latest}"
+MOVABLE_TAG="main"
+if [[ -n "${CI_COMMIT_TAG:-}" ]]; then
+  MOVABLE_TAG="$CI_COMMIT_TAG"
+elif [[ "${CI_COMMIT_BRANCH:-}" == "main" ]]; then
+  MOVABLE_TAG="main"
+fi
+
+BACKEND_IMAGE="${BACKEND_IMAGE:-${REGISTRY_IMAGE}/backend:${IMAGE_TAG}}"
+FRONTEND_IMAGE="${FRONTEND_IMAGE:-${REGISTRY_IMAGE}/frontend:${IMAGE_TAG}}"
+
+# Resolve deploy dir: trim; if CI File-variable path was used by mistake, read contents.
+resolve_deploy_dir() {
+  local default_dir="/home/ysamohvalov/service/lessons-portal"
+  local raw="${BRIX_PC_DEPLOY_DIR:-$default_dir}"
+  raw="${raw#"${raw%%[![:space:]]*}"}"
+  raw="${raw%"${raw##*[![:space:]]}"}"
+
+  if [[ -f "$raw" ]]; then
+    echo "WARNING: BRIX_PC_DEPLOY_DIR is a File variable (value is a temp path). Reading contents." >&2
+    local content
+    content="$(tr -d '\r' < "$raw" | head -n1)"
+    content="${content#"${content%%[![:space:]]*}"}"
+    content="${content%"${content##*[![:space:]]}"}"
+    if [[ "$content" == /* ]]; then
+      raw="$content"
+    else
+      echo "WARNING: File contents are not an absolute path; using default $default_dir" >&2
+      raw="$default_dir"
+    fi
+  fi
+
+  raw="${raw%/}"
+  if [[ -z "$raw" || "$raw" != /* ]]; then
+    echo "WARNING: invalid BRIX_PC_DEPLOY_DIR; using default $default_dir" >&2
+    raw="$default_dir"
+  fi
+  printf '%s' "$raw"
+}
+
+DEPLOY_DIR="$(resolve_deploy_dir)"
+
+cleanup() {
+  if [[ -n "${TMP_KEY:-}" && -f "${TMP_KEY:-}" ]]; then
+    rm -f "$TMP_KEY" || true
+  fi
+  return 0
+}
+trap cleanup EXIT
+
+echo "=== GitLab prod deploy -> ${SSH_USER}@${SSH_HOST} ==="
 echo "Source:  $SOURCE_DIR"
 echo "Target:  $DEPLOY_DIR"
 echo "Branch:  ${CI_COMMIT_REF_NAME:-unknown}"
 echo "Commit:  ${CI_COMMIT_SHORT_SHA:-unknown}"
+echo "Backend: $BACKEND_IMAGE"
+echo "Frontend:$FRONTEND_IMAGE"
+
+if [[ -z "${CI_REGISTRY_IMAGE:-}" ]]; then
+  echo "ERROR: CI_REGISTRY_IMAGE is empty; enable GitLab Container Registry for this project"
+  exit 1
+fi
+
+normalize_key_file() {
+  local src="$1"
+  local dest="$2"
+  tr -d '\r' < "$src" > "$dest"
+  [[ -s "$dest" ]] || return 1
+  [[ "$(tail -c1 "$dest" | wc -l)" -eq 1 ]] || echo >> "$dest"
+  chmod 600 "$dest"
+}
+
+key_is_usable() {
+  local key="$1"
+  [[ -f "$key" ]] || return 1
+  ssh-keygen -y -f "$key" -P "" >/dev/null 2>&1
+}
 
 normalize_key_file() {
   local src="$1"
@@ -117,3 +191,5 @@ ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$SSH_IDENTITY" "$SSH_TARGET" \
 
 echo "=== Prod deploy finished ==="
 echo "URL: https://lessons.samoh.ru"
+echo "Images: $BACKEND_IMAGE / $FRONTEND_IMAGE (also tagged :${MOVABLE_TAG} in registry)"
+exit 0
