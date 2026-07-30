@@ -1,21 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { PdfImportService } from '../pdf-import.service';
 
-jest.mock('pdf-parse', () =>
-  jest.fn(async (buffer: Buffer) => {
-    const text = buffer.toString('utf8');
-    if (text.includes('NO_TEXT')) {
-      return { text: '   ', numpages: 1, info: {}, version: '1.0' };
-    }
-    return {
-      text: 'Line one\n\nLine two',
-      numpages: 2,
-      info: { Title: '  Sample Title  ' },
-      version: '1.7',
-    };
-  }),
-);
-
 describe('PdfImportService', () => {
   let service: PdfImportService;
 
@@ -55,20 +40,43 @@ describe('PdfImportService', () => {
     });
   });
 
-  describe('extractTextFromPdf', () => {
-    it('extracts text and suggested title', async () => {
-      const result = await service.extractTextFromPdf(
-        Buffer.from('%PDF-sample'),
+  describe('convertItemsToHtml', () => {
+    it('wraps items in paragraphs and applies inline formatting', () => {
+      const html = service.convertItemsToHtml(
+        [
+          { str: 'Hello', x: 0, y: 20, fontSize: 12, fontName: 'f1', hasEOL: false },
+          { str: 'World', x: 40, y: 20, fontSize: 12, fontName: 'f2', hasEOL: false },
+          { str: 'Next', x: 0, y: 0, fontSize: 12, fontName: 'f1', hasEOL: false },
+        ],
+        {
+          f1: {
+            fontFamily: 'sans-serif',
+            ascent: 0.7,
+            descent: -0.2,
+            vertical: false,
+          },
+          f2: {
+            fontFamily: 'sans-serif bold',
+            ascent: 0.7,
+            descent: -0.2,
+            vertical: false,
+          },
+        },
       );
-      expect(result.text).toContain('Line one');
-      expect(result.suggestedTitle).toBe('Sample Title');
-      expect(result.metadata?.pageCount).toBe(2);
+      expect(html).toContain('<p>Hello<strong> World</strong></p>');
+      expect(html).toContain('<p>Next</p>');
     });
 
-    it('throws when PDF has no extractable text', async () => {
+    it('returns empty string for empty input', () => {
+      expect(service.convertItemsToHtml([], {})).toBe('');
+    });
+  });
+
+  describe('extractTextFromPdf', () => {
+    it('throws for invalid PDF structure', async () => {
       await expect(
-        service.extractTextFromPdf(Buffer.from('%PDF-NO_TEXT')),
-      ).rejects.toThrow('does not contain extractable text');
+        service.extractTextFromPdf(Buffer.from('%PDF-sample')),
+      ).rejects.toThrow('Failed to parse PDF');
     });
   });
 });

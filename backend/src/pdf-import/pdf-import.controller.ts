@@ -36,11 +36,10 @@ export class PdfImportController {
     }
 
     const result = await this.pdfImportService.extractTextFromPdf(file.buffer);
-    const htmlContent = this.pdfImportService.convertTextToHtml(result.text);
 
     return {
       text: result.text,
-      html: htmlContent,
+      html: result.html,
       suggestedTitle: result.suggestedTitle,
       metadata: result.metadata,
     };
