@@ -88,11 +88,10 @@ deploy:local:
     - job: backend:check
     - job: frontend:check
   variables:
-    # Replace the live compose project (same ports 3001/3002)
-    LOCAL_DEPLOY_DIR: "/home/ysamohvalov/project/lessons-portal"
+    # Runner-owned tree; compose project name stays "lessons-portal" (dir basename)
+    # and replaces the live stack on :3001/:3002.
+    LOCAL_DEPLOY_DIR: "/home/gitlab-runner/lessons-portal"
     LOCAL_ENV_FILE: "/home/ysamohvalov/project/lessons-portal/.env"
-    LOCAL_DEPLOY_CHOWN_UID: "1000"
-    LOCAL_DEPLOY_CHOWN_GID: "1000"
   script:
     - bash deploy/gitlab-local-deploy.sh
   environment:

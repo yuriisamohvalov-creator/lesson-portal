@@ -14,8 +14,7 @@ echo "Commit:  ${CI_COMMIT_SHORT_SHA:-unknown}"
 
 mkdir -p "$DEPLOY_DIR"
 
-rsync -rlptDz --delete \
-  --no-owner --no-group \
+rsync -az --delete \
   --exclude node_modules \
   --exclude .next \
   --exclude .git \
@@ -24,13 +23,6 @@ rsync -rlptDz --delete \
   --exclude .env \
   "$SOURCE_DIR/" "$DEPLOY_DIR/"
 
-# Keep tree owned by the workstation user when deploying into the live project dir
-if [[ -n "${LOCAL_DEPLOY_CHOWN_UID:-}" ]]; then
-  echo "=== chown deploy tree to ${LOCAL_DEPLOY_CHOWN_UID}:${LOCAL_DEPLOY_CHOWN_GID:-$LOCAL_DEPLOY_CHOWN_UID} ==="
-  docker run --rm --privileged \
-    -v "$DEPLOY_DIR:/p" \
-    alpine chown -R "${LOCAL_DEPLOY_CHOWN_UID}:${LOCAL_DEPLOY_CHOWN_GID:-$LOCAL_DEPLOY_CHOWN_UID}" /p
-fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: Env file not found: $ENV_FILE"
