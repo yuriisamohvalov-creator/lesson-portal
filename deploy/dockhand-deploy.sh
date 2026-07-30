@@ -67,11 +67,19 @@ fi
 
 echo "=== Pull prebuilt images ==="
 cd "$PROJECT_DIR"
-docker pull "$BACKEND_IMAGE"
-docker pull "$FRONTEND_IMAGE"
+pull_or_ok() {
+  local img="$1"
+  if docker image inspect "$img" >/dev/null 2>&1; then
+    echo "Image already present: $img"
+    return 0
+  fi
+  docker pull "$img"
+}
+pull_or_ok "$BACKEND_IMAGE"
+pull_or_ok "$FRONTEND_IMAGE"
 
 echo "=== Up (no build) ==="
-$COMPOSE up -d --pull always --no-build --force-recreate --remove-orphans
+$COMPOSE up -d --no-build --force-recreate --remove-orphans
 
 echo "=== Render release compose for Dockhand ==="
 $COMPOSE config > "$RELEASE_FILE"
