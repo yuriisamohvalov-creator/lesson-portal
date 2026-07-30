@@ -60,7 +60,8 @@ test.describe('Login flow', () => {
     await page.fill('input[type="password"]', 'testpass123');
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL('/');
-    await expect(page.locator('a[href="/profile"]')).toBeVisible();
+    // Use text content to distinguish the profile link in the user menu
+    await expect(page.getByRole('link', { name: 'Test User' })).toBeVisible();
   });
 });
 

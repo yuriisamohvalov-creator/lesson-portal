@@ -50,7 +50,8 @@ test.describe.serial('Video upload', () => {
     await page.locator('[contenteditable="true"]').fill(`<p>Content for ${title}</p>`);
 
     await page.locator('span', { hasText: 'Видео' }).click();
-    await expect(page.locator('button', { hasText: 'YouTube' })).toBeVisible();
+    // Use exact match to avoid matching the accordion header button
+    await expect(page.getByRole('button', { name: 'YouTube', exact: true })).toBeVisible();
 
     await videoAction();
 
