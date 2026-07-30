@@ -9,7 +9,7 @@
 
 Тесты (`backend:check`, `frontend:check`) запускаются на MR и push в `develop` / `main`.
 Один job = один `npm ci` (lint+test/build вместе), кэш `.npm/`, shallow clone `GIT_DEPTH=50`.
-Runner: `concurrent = 3` в `/etc/gitlab-runner/config.toml`.
+Runner: 5× shell на SER9 (`lessons-portal SER9` … `SER9-5`), tag `lessons-portal`, `concurrent = 5`.
 
 ## 1. GitLab Runner (shell, SER9)
 
