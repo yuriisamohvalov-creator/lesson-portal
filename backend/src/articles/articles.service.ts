@@ -124,17 +124,11 @@ export class ArticlesService {
       throw new NotFoundException('Article not found');
     }
 
-    // Only author can edit
-    if (article.authorId !== userId && userRole === UserRole.USER) {
+    if (!this.canManageArticle(article.authorId, userId, userRole)) {
       throw new ForbiddenException('You can only edit your own articles');
     }
 
-    // Can only edit DRAFT or REJECTED
-    if (article.status !== ArticleStatus.DRAFT && article.status !== ArticleStatus.REJECTED) {
-      throw new ConflictException('Cannot edit article in current status');
-    }
-
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (dto.title !== undefined) {
       data.title = dto.title;
       data.slug = await this.ensureUniqueSlug(
@@ -155,7 +149,12 @@ export class ArticlesService {
       data.categoryId = dto.categoryId;
     }
 
-    return this.prisma.article.update({
+    // Any content change returns the article to DRAFT and requires re-moderation.
+    if (Object.keys(data).length > 0 && article.status !== ArticleStatus.DRAFT) {
+      data.status = ArticleStatus.DRAFT;
+    }
+
+    const updated = await this.prisma.article.update({
       where: { id },
       data,
       include: {
@@ -163,6 +162,12 @@ export class ArticlesService {
         category: { select: { id: true, name: true, slug: true } },
       },
     });
+
+    if (data.status === ArticleStatus.DRAFT) {
+      await this.invalidatePublicListCache();
+    }
+
+    return updated;
   }
 
   async submit(id: string, userId: string, userRole: UserRole) {
@@ -171,8 +176,7 @@ export class ArticlesService {
       throw new NotFoundException('Article not found');
     }
 
-    // Only author can submit (or admin)
-    if (article.authorId !== userId && userRole === UserRole.USER) {
+    if (!this.canManageArticle(article.authorId, userId, userRole)) {
       throw new ForbiddenException('You can only submit your own articles');
     }
 
@@ -188,6 +192,15 @@ export class ArticlesService {
         category: { select: { id: true, name: true, slug: true } },
       },
     });
+  }
+
+  /** Author, moderator, or admin may edit/submit an article. */
+  private canManageArticle(authorId: string, userId: string, userRole: UserRole): boolean {
+    return (
+      authorId === userId ||
+      userRole === UserRole.ADMIN ||
+      userRole === UserRole.MODERATOR
+    );
   }
 
   private async buildCourseNav(

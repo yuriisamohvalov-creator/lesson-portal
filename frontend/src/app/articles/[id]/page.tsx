@@ -67,7 +67,12 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   }, [articleId, courseId, article?.videos]);
 
   const isAuthor = user && article && user.id === article.authorId;
-  const canEdit = isAuthor && article && (article.status === 'DRAFT' || article.status === 'REJECTED');
+  const isStaff = user && (user.role === 'ADMIN' || user.role === 'MODERATOR');
+  const canEditContent = Boolean(isAuthor || isStaff);
+  const canDelete =
+    Boolean(isAuthor || user?.role === 'ADMIN') &&
+    article &&
+    (article.status === 'DRAFT' || article.status === 'REJECTED');
 
   const handleDelete = async () => {
     if (!confirm('Вы уверены, что хотите удалить статью?')) return;
@@ -129,16 +134,20 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
 
       {article.courseNav && <CourseArticleNav courseNav={article.courseNav} />}
 
-      {isAuthor && (
+      {(isAuthor || isStaff) && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-950/40 px-4 py-3">
-          <span className="text-sm text-slate-400">Ваша статья:</span>
-          <Link
-            href={`/articles/${articleId}/edit`}
-            className="rounded-lg bg-indigo-600/80 px-3 py-1.5 text-xs font-semibold text-slate-100 no-underline hover:bg-indigo-500"
-          >
-            Редактировать
-          </Link>
-          {canEdit && (
+          <span className="text-sm text-slate-400">
+            {isAuthor ? 'Ваша статья:' : 'Управление статьёй:'}
+          </span>
+          {canEditContent && (
+            <Link
+              href={`/articles/${articleId}/edit`}
+              className="rounded-lg bg-indigo-600/80 px-3 py-1.5 text-xs font-semibold text-slate-100 no-underline hover:bg-indigo-500"
+            >
+              Редактировать
+            </Link>
+          )}
+          {canDelete && (
             <button
               type="button"
               onClick={handleDelete}

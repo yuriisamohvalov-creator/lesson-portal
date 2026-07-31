@@ -115,15 +115,43 @@ describe('ArticlesService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw ConflictException if editing PENDING article', async () => {
+    it('should allow editing PUBLISHED article and revert to DRAFT', async () => {
       prisma.article.findUnique.mockResolvedValue({
         id: '1',
         authorId: 'userId',
-        status: ArticleStatus.PENDING,
+        status: ArticleStatus.PUBLISHED,
       });
-      await expect(
-        service.update('1', 'userId', UserRole.USER, { title: 'Test' }),
-      ).rejects.toThrow(ConflictException);
+      prisma.article.findFirst.mockResolvedValue(null);
+      prisma.article.update.mockResolvedValue({
+        id: '1',
+        status: ArticleStatus.DRAFT,
+      });
+
+      const result = await service.update('1', 'userId', UserRole.USER, {
+        title: 'Updated',
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.article.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: ArticleStatus.DRAFT }),
+        }),
+      );
+    });
+
+    it('should allow moderator to edit another author article', async () => {
+      prisma.article.findUnique.mockResolvedValue({
+        id: '1',
+        authorId: 'author-1',
+        status: ArticleStatus.PUBLISHED,
+      });
+      prisma.article.update.mockResolvedValue({ id: '1', status: ArticleStatus.DRAFT });
+
+      const result = await service.update('1', 'mod-1', UserRole.MODERATOR, {
+        content: '<p>x</p>',
+      });
+
+      expect(result).toBeDefined();
     });
 
     it('should allow admin to edit any article', async () => {
@@ -132,6 +160,7 @@ describe('ArticlesService', () => {
         authorId: 'other-user',
         status: ArticleStatus.DRAFT,
       });
+      prisma.article.findFirst.mockResolvedValue(null);
       prisma.article.update.mockResolvedValue({ id: '1' });
       
       const result = await service.update('1', 'adminId', UserRole.ADMIN, { title: 'Test' });
