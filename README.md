@@ -149,4 +149,6 @@ docker compose exec backend npx prisma generate
 
   После этого нужно перелогиниться (JWT со старой ролью ещё в токене). Могу сразу выполнить UPDATE.
 
+
+qw
 ```
