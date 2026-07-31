@@ -11,6 +11,7 @@ import {
   uploadArticleVideo,
   type VideoTab,
 } from '@/lib/video-upload';
+import { runEditorCommand } from '@/lib/rich-text-editor';
 
 const TOOLBAR_BUTTONS = [
   { label: 'B', title: 'Жирный', command: 'bold' },
@@ -128,8 +129,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   };
 
   const execCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
+    runEditorCommand(editorRef.current, command, value);
+    syncContentFromEditor();
   };
 
   const handleToolbarAction = (command: string, value?: string) => {
@@ -351,6 +352,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
                   key={btn.label}
                   type="button"
                   title={btn.title}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleToolbarAction(btn.command, btn.value)}
                   className="cursor-pointer rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
                 >
@@ -362,7 +364,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
-              className="min-h-[300px] rounded-b-xl border border-slate-700 bg-slate-950/50 p-4 text-sm leading-8 text-slate-200 outline-none"
+              className="article-prose min-h-[300px] rounded-b-xl border border-slate-700 bg-slate-950/50 p-4 text-sm leading-8 text-slate-200 outline-none"
               onInput={syncContentFromEditor}
             />
           </div>

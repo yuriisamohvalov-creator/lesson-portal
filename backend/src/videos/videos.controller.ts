@@ -73,7 +73,7 @@ export class VideosController {
           cb(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`);
         },
       }),
-      limits: { fileSize: Number(process.env.MAX_VIDEO_SIZE_MB || '500') * 1024 * 1024 },
+      limits: { fileSize: Number(process.env.MAX_VIDEO_SIZE_MB || '5000') * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         const ext = extname(file.originalname).toLowerCase();
         if (['.mp4', '.webm'].includes(ext)) {

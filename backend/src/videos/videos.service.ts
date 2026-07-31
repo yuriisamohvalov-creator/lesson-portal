@@ -39,7 +39,7 @@ export class VideosService {
     private readonly cache: CacheService,
   ) {
     this.bucket = process.env.MINIO_BUCKET || 'lessons-videos';
-    const maxSizeMb = Number(process.env.MAX_VIDEO_SIZE_MB || '500');
+    const maxSizeMb = Number(process.env.MAX_VIDEO_SIZE_MB || '5000');
     this.maxSizeBytes = maxSizeMb * 1024 * 1024;
 
     const credentials = {
@@ -140,7 +140,7 @@ export class VideosService {
 
     if (dto.fileSize > this.maxSizeBytes) {
       throw new BadRequestException(
-        `File size exceeds maximum allowed size of ${process.env.MAX_VIDEO_SIZE_MB || '500'} MB`,
+        `File size exceeds maximum allowed size of ${process.env.MAX_VIDEO_SIZE_MB || '5000'} MB`,
       );
     }
 
@@ -205,7 +205,7 @@ export class VideosService {
 
     if (file.size > this.maxSizeBytes) {
       throw new BadRequestException(
-        `File size exceeds maximum allowed size of ${process.env.MAX_VIDEO_SIZE_MB || '500'} MB`,
+        `File size exceeds maximum allowed size of ${process.env.MAX_VIDEO_SIZE_MB || '5000'} MB`,
       );
     }
 
