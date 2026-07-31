@@ -103,14 +103,12 @@ export default function MyArticlesPage() {
                           Причина: {article.lastRejectionComment}
                         </span>
                       )}
-                      {canEdit(article.status) && (
-                        <Link href={`/articles/${article.id}/edit`} className="btn btn-secondary no-underline text-xs">
-                          Редактировать
-                        </Link>
-                      )}
-                      {article.status === 'REJECTED' && (
+                      <Link href={`/articles/${article.id}/edit`} className="btn btn-secondary no-underline text-xs">
+                        Редактировать
+                      </Link>
+                      {(article.status === 'DRAFT' || article.status === 'REJECTED') && (
                         <button type="button" onClick={() => handleResubmit(article.id)} className="btn btn-primary text-xs">
-                          Отправить заново
+                          {article.status === 'REJECTED' ? 'Отправить заново' : 'Отправить на модерацию'}
                         </button>
                       )}
                       {(article.status === 'DRAFT' || article.status === 'REJECTED') && (
@@ -135,6 +133,4 @@ export default function MyArticlesPage() {
   );
 }
 
-function canEdit(status: string): boolean {
-  return status === 'DRAFT' || status === 'REJECTED';
-}
+

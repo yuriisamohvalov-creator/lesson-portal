@@ -16,11 +16,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateYouTubeVideoDto } from './dto/create-youtube-video.dto';
 import { UploadVideoUrlDto } from './dto/upload-video-url.dto';
 import { ConfirmVideoDto } from './dto/confirm-video.dto';
-import { UserRole, VideoType } from '@prisma/client';
+import { UserRole, VideoType, ArticleStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import { createReadStream } from 'fs';
 import { unlink } from 'fs/promises';
+import { CacheService } from '../cache/cache.service';
 
 const UPLOAD_EXPIRES_IN = 2 * 60 * 60; // 2 hours for large files
 const STREAM_EXPIRES_IN = 15 * 60; // 15 minutes
@@ -33,7 +34,10 @@ export class VideosService {
   private readonly bucket: string;
   private readonly maxSizeBytes: number;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {
     this.bucket = process.env.MINIO_BUCKET || 'lessons-videos';
     const maxSizeMb = Number(process.env.MAX_VIDEO_SIZE_MB || '500');
     this.maxSizeBytes = maxSizeMb * 1024 * 1024;
@@ -77,11 +81,29 @@ export class VideosService {
       if (!article) {
         throw new NotFoundException('Article not found');
       }
-      if (article.authorId !== userId && userRole !== UserRole.ADMIN) {
+      if (
+        article.authorId !== userId &&
+        userRole !== UserRole.ADMIN &&
+        userRole !== UserRole.MODERATOR
+      ) {
         throw new ForbiddenException('You can only manage videos for your own articles');
       }
       return article;
     });
+  }
+
+  /** Video changes must go through moderation again. */
+  private async markArticleDraft(articleId: string) {
+    const result = await this.prisma.article.updateMany({
+      where: {
+        id: articleId,
+        status: { not: ArticleStatus.DRAFT },
+      },
+      data: { status: ArticleStatus.DRAFT },
+    });
+    if (result.count > 0) {
+      await this.cache.invalidatePattern('articles:list:*');
+    }
   }
 
   async createYouTube(
@@ -92,13 +114,15 @@ export class VideosService {
   ) {
     await this.getArticleAndCheckOwnership(articleId, userId, userRole);
 
-    return this.prisma.video.create({
+    const video = await this.prisma.video.create({
       data: {
         articleId,
         type: VideoType.YOUTUBE,
         youtubeUrl: dto.youtubeUrl,
       },
     });
+    await this.markArticleDraft(articleId);
+    return video;
   }
 
   async getUploadUrl(
@@ -153,7 +177,7 @@ export class VideosService {
   ) {
     await this.getArticleAndCheckOwnership(articleId, userId, userRole);
 
-    return this.prisma.video.create({
+    const video = await this.prisma.video.create({
       data: {
         articleId,
         type: VideoType.UPLOADED,
@@ -162,6 +186,8 @@ export class VideosService {
         processStatus: 'pending',
       },
     });
+    await this.markArticleDraft(articleId);
+    return video;
   }
 
   async uploadFile(
@@ -197,7 +223,7 @@ export class VideosService {
         }),
       );
 
-      return this.prisma.video.create({
+      const video = await this.prisma.video.create({
         data: {
           articleId,
           type: VideoType.UPLOADED,
@@ -206,6 +232,8 @@ export class VideosService {
           processStatus: 'ready',
         },
       });
+      await this.markArticleDraft(articleId);
+      return video;
     } catch {
       throw new InternalServerErrorException('Failed to upload video');
     } finally {
@@ -215,6 +243,10 @@ export class VideosService {
 
   getS3Client() {
     return this.s3;
+  }
+
+  getPresignS3Client() {
+    return this.presignS3;
   }
 
   getBucket() {
@@ -275,7 +307,21 @@ export class VideosService {
       }
     }
 
+    if (video.thumbnailKey) {
+      try {
+        await this.s3.send(
+          new DeleteObjectCommand({
+            Bucket: video.s3Bucket || this.bucket,
+            Key: video.thumbnailKey,
+          }),
+        );
+      } catch {
+        // ignore missing thumbnails
+      }
+    }
+
     await this.prisma.video.delete({ where: { id: videoId } });
+    await this.markArticleDraft(articleId);
     return { deleted: true };
   }
 

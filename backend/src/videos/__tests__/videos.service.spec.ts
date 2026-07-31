@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VideosService } from '../videos.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../cache/cache.service';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UserRole, VideoType } from '@prisma/client';
 import { CreateYouTubeVideoDto } from '../dto/create-youtube-video.dto';
@@ -14,6 +15,7 @@ describe('VideosService', () => {
     prisma = {
       article: {
         findUnique: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       video: {
         create: jest.fn(),
@@ -27,6 +29,10 @@ describe('VideosService', () => {
       providers: [
         VideosService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: CacheService,
+          useValue: { invalidatePattern: jest.fn(async () => undefined) },
+        },
       ],
     }).compile();
 

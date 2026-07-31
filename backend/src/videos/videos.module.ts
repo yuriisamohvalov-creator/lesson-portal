@@ -3,10 +3,13 @@ import { VideosController } from './videos.controller';
 import { VideosStreamController } from './videos-stream.controller';
 import { VideosService } from './videos.service';
 import { VideoProcessorService } from './video-processor.service';
+import { VideoThumbnailService } from './video-thumbnail.service';
+import { CacheModule } from '../cache/cache.module';
 
 @Module({
+  imports: [CacheModule],
   controllers: [VideosController, VideosStreamController],
-  providers: [VideosService, VideoProcessorService],
-  exports: [VideosService],
+  providers: [VideosService, VideoProcessorService, VideoThumbnailService],
+  exports: [VideosService, VideoThumbnailService],
 })
 export class VideosModule {}

@@ -56,6 +56,7 @@ function YouTubeEmbed({ url }: { url: string }) {
 
 export default function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const [articleId, setArticleId] = useState<string>('');
+  const [articleStatus, setArticleStatus] = useState<string>('');
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [categories, setCategories] = useState<any[]>([]);
@@ -100,6 +101,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setCategoryId(article.categoryId);
       setInitialContent(article.content || '');
       setVideos(article.videos || []);
+      setArticleStatus(article.status || '');
       setCategories(cats);
       if (!article.videos?.length) {
         setShowVideoForm(true);
@@ -185,6 +187,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
         onProgress: setUploadProgress,
       });
       await refreshVideos(articleId);
+      setArticleStatus('DRAFT');
       resetVideoForm();
       setShowVideoForm(false);
     } catch (err: unknown) {
@@ -201,6 +204,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     try {
       await apiFetch(`/articles/${articleId}/videos/${videoId}`, { method: 'DELETE' });
       await refreshVideos(articleId);
+      setArticleStatus('DRAFT');
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Не удалось удалить видео'));
       throw err;
@@ -236,10 +240,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     setLoading(true);
     try {
       const bodyContent = syncContentFromEditor();
-      await apiFetch(`/articles/${articleId}`, {
+      const updated = await apiFetch<any>(`/articles/${articleId}`, {
         method: 'PATCH',
         body: { title, content: bodyContent, categoryId },
       });
+      setArticleStatus(updated.status || 'DRAFT');
       router.push('/articles/mine');
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Ошибка сохранения'));
@@ -267,10 +272,21 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   };
 
   const busy = loading || uploading || Boolean(deletingVideoId);
+  const needsRemoderation =
+    articleStatus === 'PUBLISHED' ||
+    articleStatus === 'PENDING' ||
+    articleStatus === 'REJECTED';
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="text-2xl font-bold text-slate-100">Редактирование статьи</h1>
+
+      {needsRemoderation && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
+          После сохранения статья станет черновиком и исчезнет из публикации, пока вы снова
+          не отправите её на модерацию.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
