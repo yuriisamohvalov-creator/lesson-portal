@@ -17,10 +17,10 @@ DOCKER_NETWORK_ARGS=(--network=host)
 : "${CI_COMMIT_SHA:?CI_COMMIT_SHA is required}"
 
 SHORT_SHA="${CI_COMMIT_SHORT_SHA:-${CI_COMMIT_SHA:0:8}}"
-MOVABLE_TAG="main"
+MOVABLE_TAG="stable-release"
 if [[ -n "${CI_COMMIT_TAG:-}" ]]; then
   MOVABLE_TAG="$CI_COMMIT_TAG"
-elif [[ -n "${CI_COMMIT_REF_SLUG:-}" && "${CI_COMMIT_BRANCH:-}" != "main" ]]; then
+elif [[ -n "${CI_COMMIT_REF_SLUG:-}" && "${CI_COMMIT_BRANCH:-}" != "stable-release" ]]; then
   MOVABLE_TAG="$CI_COMMIT_REF_SLUG"
 fi
 

@@ -5,10 +5,11 @@
 | Job | Ветка | Когда | Куда |
 |-----|-------|-------|------|
 | `deploy:local` | `develop` | автоматически после push | dev-стек на машине runner (SER9) |
-| `build:images` | `main`, tags | после тестов | push в GitLab Container Registry |
-| `deploy:prod` | `main`, tags | после `build:images` (tags — manual) | pull на brix-pc → https://lessons.samoh.ru |
+| `build:images` | `stable-release`, tags | после тестов | push в GitLab Container Registry |
+| `deploy:prod` | `stable-release`, tags | после `build:images` (tags — manual) | pull на brix-pc → https://lessons.samoh.ru |
 
-Тесты (`backend:check`, `frontend:check`) запускаются на MR и push в `develop` / `main`.
+Тесты (`backend:check`, `frontend:check`) запускаются на MR и push в `develop` / `main` / `stable-release`.
+Ветка `main` **не** деплоит прод — только проверки. Прод обновляется при merge/push в `stable-release`.
 Один job = один `npm ci` (lint+test/build вместе), shallow clone `GIT_DEPTH=50`.
 Runner: shell на SER9, tag `lessons-portal`, **`concurrent = 2`**.
 `PRISMA_SKIP_POSTINSTALL_GENERATE=true` + `NODE_OPTIONS=--max-old-space-size=2048 --dns-result-order=ipv4first`.
@@ -40,10 +41,10 @@ sudo systemctl restart gitlab-runner
 
 Registry уже слушает **`gitlab.local:5050`** (HTTP). Образы:
 
-- `gitlab.local:5050/yurii.samohvalov/lesson-portal/backend:<sha|main|tag>`
-- `gitlab.local:5050/yurii.samohvalov/lesson-portal/frontend:<sha|main|tag>`
+- `gitlab.local:5050/yurii.samohvalov/lesson-portal/backend:<sha|stable-release|tag>`
+- `gitlab.local:5050/yurii.samohvalov/lesson-portal/frontend:<sha|stable-release|tag>`
 
-Job `build:images` логинится через встроенные `CI_REGISTRY*` и пушит `:sha` + `:main` (или git tag).
+Job `build:images` логинится через встроенные `CI_REGISTRY*` и пушит `:sha` + `:stable-release` (или git tag).
 
 На **brix** при деплое CI передаёт `CI_REGISTRY_USER` / `CI_REGISTRY_PASSWORD` (job token) в `docker login`. Альтернатива: Deploy Token (read_registry) и `docker login` один раз на brix.
 
@@ -61,7 +62,7 @@ cp .env.example /home/ysamohvalov/service/lessons-portal-local/.env
 | `LOCAL_DEPLOY_DIR` | `/home/gitlab-runner/lessons-portal` |
 | `LOCAL_ENV_FILE` | путь к `.env` на runner-хосте |
 
-## 4. Prod деплой (main / tags)
+## 4. Prod деплой (stable-release / tags)
 
 **На проде нет сборки.** CI пушит образы → brix делает `docker pull` + `compose up --no-build`.
 
@@ -126,14 +127,16 @@ FRONTEND_URL=https://lessons.samoh.ru
 
 **`master key not found`** — создать ключ на brix: `./deploy/secrets.sh gen-key`.
 
-**`BACKEND_IMAGE must be set`** — CI должен передать pin; либо прописать в `.env` теги `.../backend:main`.
+**`BACKEND_IMAGE must be set`** — CI должен передать pin; либо прописать в `.env` теги `.../backend:stable-release`.
 
 ## 5. Workflow
 
 ```
 feature → MR → develop → [deploy:local, build on SER9]
                     ↓ merge
-                  main → build:images (registry) → deploy:prod (pull on brix)
+                  main → tests only
+                    ↓ merge (release)
+           stable-release → build:images (registry) → deploy:prod (pull on brix)
 ```
 
 ## 6. Ручной запуск

@@ -50,7 +50,7 @@ Self-hosted GitLab: `ssh://git@gitlab.local:2222/yurii.samohvalov/lesson-portal.
 | Pipeline | Ветка | Деплой |
 |----------|-------|--------|
 | `deploy:local` | `develop` | dev-стек на runner-хосте (localhost:3002) |
-| `deploy:prod` | `main` / tags | вручную → brix-pc (lessons.samoh.ru) |
+| `deploy:prod` | `stable-release` / tags | merge → brix-pc (lessons.samoh.ru); tags — manual |
 
 Подробнее: [docs/gitlab-ci.md](docs/gitlab-ci.md)
 

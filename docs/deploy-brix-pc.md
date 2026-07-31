@@ -59,7 +59,7 @@ docker login gitlab.local:5050
 
 ## 2. Обычный релиз
 
-Push/merge в `main` → pipeline:
+Push/merge в `stable-release` → pipeline:
 
 1. `backend:check` / `frontend:check`
 2. `build:images` — push в registry
@@ -69,8 +69,8 @@ Push/merge в `main` → pipeline:
 
 ```bash
 cd ~/service/lessons-portal
-export BACKEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/backend:main
-export FRONTEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/frontend:main
+export BACKEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/backend:stable-release
+export FRONTEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/frontend:stable-release
 ./deploy/dockhand-deploy.sh
 # или
 ./deploy/deploy-brix-pc.sh lessons.samoh.ru admin@samoh.ru

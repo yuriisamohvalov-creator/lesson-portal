@@ -13,11 +13,13 @@ TMP_KEY=""
 # Image tags from CI (build:images job) — pin immutable commit SHA
 REGISTRY_IMAGE="${CI_REGISTRY_IMAGE:-}"
 IMAGE_TAG="${CI_COMMIT_SHA:-latest}"
-MOVABLE_TAG="main"
+MOVABLE_TAG="stable-release"
 if [[ -n "${CI_COMMIT_TAG:-}" ]]; then
   MOVABLE_TAG="$CI_COMMIT_TAG"
-elif [[ "${CI_COMMIT_BRANCH:-}" == "main" ]]; then
-  MOVABLE_TAG="main"
+elif [[ "${CI_COMMIT_BRANCH:-}" == "stable-release" ]]; then
+  MOVABLE_TAG="stable-release"
+elif [[ -n "${CI_COMMIT_REF_SLUG:-}" ]]; then
+  MOVABLE_TAG="$CI_COMMIT_REF_SLUG"
 fi
 
 BACKEND_IMAGE="${BACKEND_IMAGE:-${REGISTRY_IMAGE}/backend:${IMAGE_TAG}}"
