@@ -126,3 +126,8 @@ docker compose exec backend npx prisma migrate reset
 # Генерация Prisma Client
 docker compose exec backend npx prisma generate
 ```
+
+
+```
+aaaaa
+```
