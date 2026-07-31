@@ -19,6 +19,7 @@ describe('VideosService', () => {
         create: jest.fn(),
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        delete: jest.fn(),
       },
     };
 
@@ -97,6 +98,31 @@ describe('VideosService', () => {
       prisma.article.findUnique.mockResolvedValue(null);
 
       await expect(service.findByArticle('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('should delete video for article author', async () => {
+      prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'user-1' });
+      prisma.video.findUnique.mockResolvedValue({
+        id: 'video-1',
+        articleId: 'article-1',
+        s3Key: null,
+      });
+      prisma.video.delete.mockResolvedValue({ id: 'video-1' });
+
+      const result = await service.remove('article-1', 'video-1', 'user-1', UserRole.USER);
+
+      expect(result).toEqual({ deleted: true });
+      expect(prisma.video.delete).toHaveBeenCalledWith({ where: { id: 'video-1' } });
+    });
+
+    it('should reject deletion for non-author', async () => {
+      prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'author-1' });
+
+      await expect(
+        service.remove('article-1', 'video-1', 'user-1', UserRole.USER),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

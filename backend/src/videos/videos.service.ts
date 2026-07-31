@@ -5,7 +5,12 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateYouTubeVideoDto } from './dto/create-youtube-video.dto';
@@ -39,11 +44,18 @@ export class VideosService {
     };
     const region = process.env.MINIO_REGION || 'us-east-1';
 
+    // Avoid AWS SDK flexible checksums in presigned URLs (breaks older MinIO / some proxies).
+    const s3Checksums = {
+      requestChecksumCalculation: 'WHEN_REQUIRED' as const,
+      responseChecksumValidation: 'WHEN_REQUIRED' as const,
+    };
+
     this.s3 = new S3Client({
       endpoint: process.env.MINIO_ENDPOINT,
       region,
       credentials,
       forcePathStyle: true,
+      ...s3Checksums,
     });
 
     // Presigned URLs use the public site origin; nginx proxies /lessons-videos/ to MinIO
@@ -52,6 +64,7 @@ export class VideosService {
       region,
       credentials,
       forcePathStyle: true,
+      ...s3Checksums,
     });
   }
 
@@ -234,6 +247,36 @@ export class VideosService {
 
     const videos = await this.prisma.video.findMany({ where: { articleId } });
     return this.attachStreamUrls(videos);
+  }
+
+  async remove(
+    articleId: string,
+    videoId: string,
+    userId: string,
+    userRole: UserRole,
+  ) {
+    await this.getArticleAndCheckOwnership(articleId, userId, userRole);
+
+    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+    if (!video || video.articleId !== articleId) {
+      throw new NotFoundException('Video not found');
+    }
+
+    if (video.s3Key) {
+      try {
+        await this.s3.send(
+          new DeleteObjectCommand({
+            Bucket: video.s3Bucket || this.bucket,
+            Key: video.s3Key,
+          }),
+        );
+      } catch {
+        // Object may already be gone; still remove the DB row.
+      }
+    }
+
+    await this.prisma.video.delete({ where: { id: videoId } });
+    return { deleted: true };
   }
 
   async getStreamRedirectUrl(videoId: string) {

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -112,6 +113,22 @@ export class VideosController {
       req.user.id,
       req.user.role,
       dto,
+    );
+  }
+
+  @Delete(':videoId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  remove(
+    @Param('articleId') articleId: string,
+    @Param('videoId') videoId: string,
+    @Req() req: any,
+  ) {
+    return this.videosService.remove(
+      articleId,
+      videoId,
+      req.user.id,
+      req.user.role,
     );
   }
 }

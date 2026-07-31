@@ -5,6 +5,12 @@ import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { PdfImportButton } from '@/components/PdfImportButton';
+import { ArticleVideoForm } from '@/components/ArticleVideoForm';
+import { UploadedVideo } from '@/components/UploadedVideo';
+import {
+  uploadArticleVideo,
+  type VideoTab,
+} from '@/lib/video-upload';
 
 const TOOLBAR_BUTTONS = [
   { label: 'B', title: 'Жирный', command: 'bold' },
@@ -21,16 +27,51 @@ const TOOLBAR_BUTTONS = [
   { label: '❝', title: 'Цитата', command: 'formatBlock', value: 'blockquote' },
 ];
 
+type ArticleVideo = {
+  id: string;
+  type: 'YOUTUBE' | 'UPLOADED';
+  youtubeUrl?: string | null;
+  processStatus?: string;
+  url?: string;
+};
+
+function YouTubeEmbed({ url }: { url: string }) {
+  const embedUrl = url
+    .replace('watch?v=', 'embed/')
+    .replace('youtu.be/', 'youtube.com/embed/')
+    .replace('youtube.com/live/', 'youtube.com/embed/');
+
+  return (
+    <div className="aspect-video overflow-hidden rounded-xl border border-slate-800 bg-black">
+      <iframe
+        src={embedUrl}
+        className="h-full w-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title="YouTube video"
+      />
+    </div>
+  );
+}
+
 export default function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const [articleId, setArticleId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [categories, setCategories] = useState<any[]>([]);
+  const [videos, setVideos] = useState<ArticleVideo[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialContent, setInitialContent] = useState('');
   const [content, setContent] = useState('');
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  const [showVideoForm, setShowVideoForm] = useState(false);
+  const [videoTab, setVideoTab] = useState<VideoTab>('youtube');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -38,6 +79,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     params.then(({ id }) => setArticleId(id));
   }, [params]);
+
+  const refreshVideos = async (id: string) => {
+    const list = await apiFetch<ArticleVideo[]>(`/articles/${id}/videos`);
+    setVideos(list);
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -53,7 +99,11 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setTitle(article.title);
       setCategoryId(article.categoryId);
       setInitialContent(article.content || '');
+      setVideos(article.videos || []);
       setCategories(cats);
+      if (!article.videos?.length) {
+        setShowVideoForm(true);
+      }
     }).catch(() => setError('Не удалось загрузить статью'));
   }, [user, authLoading, router, articleId]);
 
@@ -105,6 +155,81 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     setActiveTab('edit');
   };
 
+  const resetVideoForm = () => {
+    setYoutubeUrl('');
+    setVideoFile(null);
+    setUploadProgress(0);
+    setVideoTab('youtube');
+  };
+
+  const handleAddVideo = async () => {
+    if (!articleId) return;
+    if (videoTab === 'youtube' && !youtubeUrl.trim()) {
+      setError('Укажите ссылку на YouTube');
+      return;
+    }
+    if (videoTab === 'upload' && !videoFile) {
+      setError('Выберите видеофайл');
+      return;
+    }
+
+    setError('');
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      await uploadArticleVideo({
+        articleId,
+        videoTab,
+        youtubeUrl,
+        videoFile,
+        onProgress: setUploadProgress,
+      });
+      await refreshVideos(articleId);
+      resetVideoForm();
+      setShowVideoForm(false);
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, err instanceof Error ? err.message : 'Ошибка загрузки видео'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeVideo = async (videoId: string) => {
+    if (!articleId) return;
+    setError('');
+    setDeletingVideoId(videoId);
+    try {
+      await apiFetch(`/articles/${articleId}/videos/${videoId}`, { method: 'DELETE' });
+      await refreshVideos(articleId);
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Не удалось удалить видео'));
+      throw err;
+    } finally {
+      setDeletingVideoId(null);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm('Удалить это видео из статьи?')) return;
+    try {
+      await removeVideo(videoId);
+      setShowVideoForm(true);
+    } catch {
+      // error already shown
+    }
+  };
+
+  const handleReplaceVideo = async (videoId: string) => {
+    if (!confirm('Удалить текущее видео и добавить новое?')) return;
+    try {
+      await removeVideo(videoId);
+      resetVideoForm();
+      setShowVideoForm(true);
+    } catch {
+      // error already shown
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -140,6 +265,8 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
       setLoading(false);
     }
   };
+
+  const busy = loading || uploading || Boolean(deletingVideoId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -179,7 +306,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
             <label className="text-sm font-semibold text-slate-300">Содержание</label>
             <div className="flex flex-wrap items-center gap-1">
               <PdfImportButton
-                disabled={loading}
+                disabled={busy}
                 hasExistingContent={Boolean(getEditorContent().replace(/<[^>]*>/g, '').trim())}
                 onImported={applyPdfImport}
                 onError={setError}
@@ -232,18 +359,115 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
+        <div className="card space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-semibold text-slate-100">Видео</h2>
+              <p className="text-sm text-slate-400">
+                Добавьте YouTube-ссылку или загрузите файл. Можно заменить текущее видео.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary text-xs"
+              onClick={() => setShowVideoForm((open) => !open)}
+              disabled={busy}
+            >
+              {showVideoForm ? 'Скрыть форму' : videos.length ? 'Добавить ещё' : 'Добавить видео'}
+            </button>
+          </div>
+
+          {videos.length > 0 ? (
+            <ul className="space-y-4">
+              {videos.map((video) => (
+                <li
+                  key={video.id}
+                  className="rounded-xl border border-slate-800 bg-slate-950/40 p-4"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-slate-300">
+                      {video.type === 'YOUTUBE' ? 'YouTube' : 'Загруженный файл'}
+                      {video.type === 'UPLOADED' && video.processStatus === 'pending'
+                        ? ' · обрабатывается'
+                        : ''}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-secondary text-xs"
+                        disabled={busy}
+                        onClick={() => void handleReplaceVideo(video.id)}
+                      >
+                        Заменить
+                      </button>
+                      <button
+                        type="button"
+                        className="btn text-xs border border-rose-500/40 text-rose-300 hover:bg-rose-950/40"
+                        disabled={busy}
+                        onClick={() => void handleDeleteVideo(video.id)}
+                      >
+                        {deletingVideoId === video.id ? 'Удаление...' : 'Удалить'}
+                      </button>
+                    </div>
+                  </div>
+                  {video.type === 'YOUTUBE' && video.youtubeUrl && (
+                    <YouTubeEmbed url={video.youtubeUrl} />
+                  )}
+                  {video.type === 'UPLOADED' && (
+                    <UploadedVideo
+                      videoId={video.id}
+                      url={video.url}
+                      processStatus={video.processStatus}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-400">В статье пока нет видео.</p>
+          )}
+
+          {showVideoForm && (
+            <div className="space-y-3">
+              <ArticleVideoForm
+                videoTab={videoTab}
+                onVideoTabChange={setVideoTab}
+                youtubeUrl={youtubeUrl}
+                onYoutubeUrlChange={setYoutubeUrl}
+                onVideoFileChange={setVideoFile}
+                uploading={uploading}
+                uploadProgress={uploadProgress}
+                disabled={busy && !uploading}
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="btn btn-primary text-sm"
+                  onClick={() => void handleAddVideo()}
+                  disabled={
+                    busy ||
+                    (videoTab === 'youtube' ? !youtubeUrl.trim() : !videoFile)
+                  }
+                >
+                  {uploading ? `Загрузка ${uploadProgress}%...` : 'Сохранить видео'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap justify-end gap-3">
           <button type="button" className="btn btn-secondary" onClick={() => router.back()}>
             Отмена
           </button>
-          <button type="submit" className="btn btn-secondary" disabled={loading || !title || !categoryId}>
+          <button type="submit" className="btn btn-secondary" disabled={busy || !title || !categoryId}>
             {loading ? 'Сохранение...' : 'Сохранить'}
           </button>
           <button
             type="button"
             className="btn btn-primary"
             onClick={handleSubmitForModeration}
-            disabled={loading || !title || !categoryId}
+            disabled={busy || !title || !categoryId}
           >
             {loading ? 'Отправка...' : 'Отправить на модерацию'}
           </button>

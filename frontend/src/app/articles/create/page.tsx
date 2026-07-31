@@ -1,48 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { apiFetch, getApiUrl, getAccessToken, getApiErrorMessage } from '@/lib/api';
+import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { PdfImportButton } from '@/components/PdfImportButton';
-
-const MAX_VIDEO_MB = Number(process.env.NEXT_PUBLIC_MAX_VIDEO_SIZE_MB || '5000');
-const DIRECT_UPLOAD_MAX_MB = 100;
-
-function uploadWithProgress(
-  xhr: XMLHttpRequest,
-  onProgress: (percent: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    xhr.timeout = 0;
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        onProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-        return;
-      }
-      let message = `${xhr.status} ${xhr.statusText || 'Upload failed'}`;
-      try {
-        const err = JSON.parse(xhr.responseText);
-        message = err.message || message;
-      } catch {
-        if (xhr.responseText.includes('SignatureDoesNotMatch')) {
-          message = 'Ошибка подписи загрузки. Попробуйте ещё раз.';
-        }
-      }
-      if (xhr.status === 413) {
-        message = `Файл слишком большой (лимит ${MAX_VIDEO_MB >= 1024 ? `${MAX_VIDEO_MB / 1024} ГБ` : `${MAX_VIDEO_MB} МБ`})`;
-      }
-      reject(new Error(message));
-    };
-    xhr.onerror = () => reject(new Error('Соединение прервано при загрузке видео. Не закрывайте вкладку.'));
-    xhr.onabort = () => reject(new Error('Загрузка видео отменена'));
-  });
-}
+import { ArticleVideoForm } from '@/components/ArticleVideoForm';
+import {
+  uploadArticleVideo,
+  type VideoTab,
+} from '@/lib/video-upload';
 
 const TOOLBAR_BUTTONS = [
   { label: 'B', title: 'Жирный', command: 'bold' },
@@ -67,7 +34,7 @@ export default function CreateArticlePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showVideoForm, setShowVideoForm] = useState(false);
-  const [videoTab, setVideoTab] = useState<'youtube' | 'upload'>('youtube');
+  const [videoTab, setVideoTab] = useState<VideoTab>('youtube');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -129,70 +96,24 @@ export default function CreateArticlePage() {
   };
 
   const uploadVideo = async (articleId: string): Promise<boolean> => {
-    if (videoTab === 'youtube' && youtubeUrl.trim()) {
-      await apiFetch(`/articles/${articleId}/videos/youtube`, {
-        method: 'POST',
-        body: { youtubeUrl: youtubeUrl.trim() },
+    const hasVideo =
+      (videoTab === 'youtube' && Boolean(youtubeUrl.trim())) ||
+      (videoTab === 'upload' && Boolean(videoFile));
+    if (!hasVideo) return false;
+
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      return await uploadArticleVideo({
+        articleId,
+        videoTab,
+        youtubeUrl,
+        videoFile,
+        onProgress: setUploadProgress,
       });
-      return true;
+    } finally {
+      setUploading(false);
     }
-
-    if (videoTab === 'upload' && videoFile) {
-      if (videoFile.size > MAX_VIDEO_MB * 1024 * 1024) {
-        throw new Error(`Файл слишком большой. Максимум ${MAX_VIDEO_MB >= 1024 ? `${MAX_VIDEO_MB / 1024} ГБ` : `${MAX_VIDEO_MB} МБ`}`);
-      }
-
-      setUploading(true);
-      setUploadProgress(0);
-      try {
-        const usePresigned = videoFile.size > DIRECT_UPLOAD_MAX_MB * 1024 * 1024;
-
-        if (usePresigned) {
-          const { uploadUrl, s3Key } = await apiFetch<any>(
-            `/articles/${articleId}/videos/upload-url`,
-            {
-              method: 'POST',
-              body: {
-                fileName: videoFile.name,
-                fileSize: videoFile.size,
-                contentType: videoFile.type || 'video/mp4',
-              },
-            },
-          );
-
-          const xhr = new XMLHttpRequest();
-          xhr.open('PUT', uploadUrl, true);
-          xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4');
-          const uploadPromise = uploadWithProgress(xhr, setUploadProgress);
-          xhr.send(videoFile);
-          await uploadPromise;
-
-          await apiFetch(`/articles/${articleId}/videos/confirm`, {
-            method: 'POST',
-            body: { s3Key, contentType: videoFile.type || 'video/mp4' },
-          });
-        } else {
-          const formData = new FormData();
-          formData.append('file', videoFile);
-
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', getApiUrl(`/articles/${articleId}/videos/upload`));
-          const token = getAccessToken();
-          if (token) {
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          }
-          xhr.withCredentials = true;
-          const uploadPromise = uploadWithProgress(xhr, setUploadProgress);
-          xhr.send(formData);
-          await uploadPromise;
-        }
-        return true;
-      } finally {
-        setUploading(false);
-      }
-    }
-
-    return false;
   };
 
   const persistArticle = async (): Promise<string> => {
@@ -223,7 +144,7 @@ export default function CreateArticlePage() {
       try {
         await uploadVideo(articleId);
       } catch (videoErr: unknown) {
-        setError(`Статья сохранена, но видео не загружено: ${getApiErrorMessage(videoErr, 'ошибка загрузки')}`);
+        setError(`Статья сохранена, но видео не загружено: ${getApiErrorMessage(videoErr, videoErr instanceof Error ? videoErr.message : 'ошибка загрузки')}`);
         return;
       }
       await apiFetch(`/articles/${articleId}/submit`, { method: 'POST' });
@@ -243,7 +164,7 @@ export default function CreateArticlePage() {
       try {
         await uploadVideo(articleId);
       } catch (videoErr: unknown) {
-        setError(`Черновик сохранён, но видео не загружено: ${getApiErrorMessage(videoErr, 'ошибка загрузки')}`);
+        setError(`Черновик сохранён, но видео не загружено: ${getApiErrorMessage(videoErr, videoErr instanceof Error ? videoErr.message : 'ошибка загрузки')}`);
         return;
       }
       router.push('/articles/mine');
@@ -360,63 +281,17 @@ export default function CreateArticlePage() {
           </button>
 
           {showVideoForm && (
-            <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <div className="mb-4 flex gap-2">
-                <button
-                  type="button"
-                  className={`btn text-xs ${videoTab === 'youtube' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setVideoTab('youtube')}
-                >
-                  YouTube
-                </button>
-                <button
-                  type="button"
-                  className={`btn text-xs ${videoTab === 'upload' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setVideoTab('upload')}
-                >
-                  Загрузить файл
-                </button>
-              </div>
-
-              {videoTab === 'youtube' && (
-                <div className="form-group">
-                  <label>Ссылка на YouTube</label>
-                  <input
-                    type="url"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                  />
-                  <p className="mt-1 text-xs text-slate-400">
-                    Поддерживаются форматы: youtube.com/watch?v=... и youtu.be/...
-                  </p>
-                </div>
-              )}
-
-              {videoTab === 'upload' && (
-                <div className="form-group">
-                  <label>Видеофайл</label>
-                  <input
-                    type="file"
-                    accept=".mp4,.webm,video/mp4,video/webm"
-                    onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                  />
-                  <p className="mt-1 text-xs text-slate-400">
-                    Допустимые форматы: MP4, WebM. Максимальный размер: {MAX_VIDEO_MB >= 1024 ? `${MAX_VIDEO_MB / 1024} ГБ` : `${MAX_VIDEO_MB} МБ`}.
-                  </p>
-                  {uploading && (
-                    <div className="mt-3">
-                      <div className="mb-1 text-xs text-slate-400">Загрузка: {uploadProgress}%</div>
-                      <div className="h-1.5 rounded bg-slate-800">
-                        <div
-                          className="h-full rounded bg-indigo-500 transition-all"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="mt-4">
+              <ArticleVideoForm
+                videoTab={videoTab}
+                onVideoTabChange={setVideoTab}
+                youtubeUrl={youtubeUrl}
+                onYoutubeUrlChange={setYoutubeUrl}
+                onVideoFileChange={setVideoFile}
+                uploading={uploading}
+                uploadProgress={uploadProgress}
+                disabled={loading}
+              />
             </div>
           )}
         </div>
