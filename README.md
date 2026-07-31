@@ -129,5 +129,24 @@ docker compose exec backend npx prisma generate
 
 
 ```
-aaaaa
+Назначение роли администратора для уже существующего пользователя
+
+ Для уже существующего пользователя (у тебя сейчас admin@test.com с ролью USER):
+
+  UPDATE users
+  SET role = 'ADMIN'
+  WHERE email = 'admin@test.com';
+
+  Проверка:
+
+  SELECT id, email, display_name, role FROM users WHERE email = 'admin@test.com';
+
+  Выполнить локально:
+
+  docker compose -f docker-compose.yml -f docker-compose.override.yml --env-file .env \
+    exec -T postgres psql -U lessons_user -d lessons_portal \
+    -c "UPDATE users SET role = 'ADMIN' WHERE email = 'admin@test.com';"
+
+  После этого нужно перелогиниться (JWT со старой ролью ещё в токене). Могу сразу выполнить UPDATE.
+
 ```
