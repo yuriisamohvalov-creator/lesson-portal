@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ArticleStatus, UserRole } from '@prisma/client';
 import { VideosService } from '../../videos/videos.service';
+import { VideoThumbnailService } from '../../videos/video-thumbnail.service';
 import { CacheService } from '../../cache/cache.service';
 
 describe('ArticlesService', () => {
@@ -60,6 +61,15 @@ describe('ArticlesService', () => {
         ArticlesService,
         { provide: PrismaService, useValue: prisma },
         { provide: VideosService, useValue: videosService },
+        {
+          provide: VideoThumbnailService,
+          useValue: {
+            youtubeThumbnailUrl: jest.fn((url: string) => {
+              const m = url.match(/v=([^&]+)/);
+              return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : null;
+            }),
+          },
+        },
         { provide: CacheService, useValue: cacheService },
       ],
     }).compile();

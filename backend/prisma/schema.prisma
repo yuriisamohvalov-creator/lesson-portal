@@ -120,6 +120,7 @@ model Video {
   youtubeUrl    String?   @map("youtube_url")
   s3Key         String?   @map("s3_key")
   s3Bucket      String?   @map("s3_bucket")
+  thumbnailKey  String?   @map("thumbnail_key")
   duration      Int?
   processStatus String    @default("pending") @map("process_status")
   createdAt     DateTime  @default(now()) @map("created_at")

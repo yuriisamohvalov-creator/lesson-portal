@@ -245,6 +245,10 @@ export class VideosService {
     return this.s3;
   }
 
+  getPresignS3Client() {
+    return this.presignS3;
+  }
+
   getBucket() {
     return this.bucket;
   }
@@ -300,6 +304,19 @@ export class VideosService {
         );
       } catch {
         // Object may already be gone; still remove the DB row.
+      }
+    }
+
+    if (video.thumbnailKey) {
+      try {
+        await this.s3.send(
+          new DeleteObjectCommand({
+            Bucket: video.s3Bucket || this.bucket,
+            Key: video.thumbnailKey,
+          }),
+        );
+      } catch {
+        // ignore missing thumbnails
       }
     }
 

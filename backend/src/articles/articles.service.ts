@@ -6,11 +6,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VideosService } from '../videos/videos.service';
+import { VideoThumbnailService } from '../videos/video-thumbnail.service';
 import { CacheService, CACHE_KEYS } from '../cache/cache.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { ListArticlesDto } from './dto/list-articles.dto';
-import { UserRole, ArticleStatus, ModerationAction } from '@prisma/client';
+import { UserRole, ArticleStatus, ModerationAction, VideoType } from '@prisma/client';
 import sanitizeHtml from 'sanitize-html';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class ArticlesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly videosService: VideosService,
+    private readonly videoThumbnails: VideoThumbnailService,
     private readonly cache: CacheService,
   ) {}
 
@@ -351,13 +353,32 @@ export class ArticlesService {
         include: {
           author: { select: { id: true, displayName: true } },
           category: { select: { id: true, name: true, slug: true } },
+          videos: {
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+            select: {
+              id: true,
+              type: true,
+              youtubeUrl: true,
+              thumbnailKey: true,
+              processStatus: true,
+            },
+          },
         },
       }),
       this.prisma.article.count({ where }),
     ]);
 
+    const data = await Promise.all(
+      articles.map(async (article) => {
+        const coverUrl = await this.resolveCoverUrl(article.videos[0]);
+        const { videos, ...rest } = article;
+        return { ...rest, coverUrl, hasVideo: videos.length > 0 };
+      }),
+    );
+
     const result = {
-      data: articles,
+      data,
       meta: {
         total,
         page,
@@ -368,6 +389,33 @@ export class ArticlesService {
 
     await this.cache.set(cacheKey, result, 60);
     return result;
+  }
+
+  private async resolveCoverUrl(
+    video?: {
+      id: string;
+      type: VideoType;
+      youtubeUrl: string | null;
+      thumbnailKey: string | null;
+      processStatus: string;
+    } | null,
+  ): Promise<string | undefined> {
+    if (!video) return undefined;
+
+    if (video.type === VideoType.YOUTUBE && video.youtubeUrl) {
+      return this.videoThumbnails.youtubeThumbnailUrl(video.youtubeUrl) || undefined;
+    }
+
+    if (
+      video.type === VideoType.UPLOADED &&
+      video.thumbnailKey &&
+      video.processStatus === 'ready'
+    ) {
+      // Stable same-origin URL; backend redirects to a fresh signed MinIO object.
+      return `/api/videos/${video.id}/thumbnail`;
+    }
+
+    return undefined;
   }
 
   async findMine(userId: string) {

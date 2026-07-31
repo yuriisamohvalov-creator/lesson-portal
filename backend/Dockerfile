@@ -1,5 +1,5 @@
 FROM node:22-slim AS development
-RUN apt-get update -y && apt-get install -y openssl wget && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl wget ffmpeg && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma
@@ -33,7 +33,7 @@ RUN mkdir -p node_modules/@prisma/engines node_modules/prisma/node_modules/@pris
 RUN npm run build
 
 FROM node:22-slim AS runner
-RUN apt-get update -y && apt-get install -y openssl wget python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl wget ffmpeg python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ARG NPM_REGISTRY=https://registry.npmjs.org/
 ENV npm_config_registry=$NPM_REGISTRY

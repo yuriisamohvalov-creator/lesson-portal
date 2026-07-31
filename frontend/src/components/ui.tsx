@@ -8,6 +8,8 @@ export type ArticleCardData = {
   category?: { id?: string; name?: string } | null;
   author?: { displayName?: string } | null;
   description?: string | null;
+  coverUrl?: string | null;
+  hasVideo?: boolean;
 };
 
 export function ArticleCard({ article }: { article: ArticleCardData }) {
@@ -17,11 +19,26 @@ export function ArticleCard({ article }: { article: ArticleCardData }) {
       className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 no-underline transition-all duration-300 hover:-translate-y-1 hover:border-slate-700 hover:shadow-xl hover:shadow-indigo-500/10"
     >
       <div className="relative h-36 w-full overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-800/30 via-transparent to-transparent" />
+        {article.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={article.coverUrl}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-800/30 via-transparent to-transparent" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           {article.category?.name && (
             <span className="rounded-lg border border-slate-700/80 bg-slate-900/90 px-2.5 py-1 text-[11px] font-bold text-slate-200 backdrop-blur-md">
               {article.category.name}
+            </span>
+          )}
+          {article.hasVideo && (
+            <span className="rounded-lg border border-indigo-500/40 bg-indigo-950/80 px-2.5 py-1 text-[11px] font-bold text-indigo-200 backdrop-blur-md">
+              Видео
             </span>
           )}
         </div>
