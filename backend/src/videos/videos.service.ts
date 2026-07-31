@@ -5,6 +5,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   Logger,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import {
   S3Client,
@@ -29,7 +30,7 @@ const STREAM_EXPIRES_IN = 15 * 60; // 15 minutes
 const ALLOWED_EXTENSIONS = ['.mp4', '.webm'];
 
 @Injectable()
-export class VideosService {
+export class VideosService implements OnModuleDestroy {
   private readonly logger = new Logger(VideosService.name);
   private readonly s3: S3Client;
   private readonly presignS3: S3Client;
@@ -72,6 +73,11 @@ export class VideosService {
       forcePathStyle: true,
       ...s3Checksums,
     });
+  }
+
+  onModuleDestroy() {
+    this.s3.destroy();
+    this.presignS3.destroy();
   }
 
   private getArticleAndCheckOwnership(
