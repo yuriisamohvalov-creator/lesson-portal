@@ -89,11 +89,12 @@ describe('VideosService', () => {
 
     it('should reject files exceeding max size', async () => {
       prisma.article.findUnique.mockResolvedValue({ id: 'article-1', authorId: 'user-1' });
+      const maxMb = Number(process.env.MAX_VIDEO_SIZE_MB || '5000');
 
       await expect(
         service.getUploadUrl('article-1', 'user-1', UserRole.USER, {
           fileName: 'video.mp4',
-          fileSize: 600 * 1024 * 1024,
+          fileSize: (maxMb + 1) * 1024 * 1024,
         } as UploadVideoUrlDto),
       ).rejects.toThrow(BadRequestException);
     });
