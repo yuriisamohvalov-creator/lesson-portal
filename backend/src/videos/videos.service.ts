@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import {
   S3Client,
@@ -29,6 +30,7 @@ const ALLOWED_EXTENSIONS = ['.mp4', '.webm'];
 
 @Injectable()
 export class VideosService {
+  private readonly logger = new Logger(VideosService.name);
   private readonly s3: S3Client;
   private readonly presignS3: S3Client;
   private readonly bucket: string;
@@ -165,6 +167,12 @@ export class VideosService {
         expiresIn: UPLOAD_EXPIRES_IN,
       };
     } catch (error) {
+      this.logger.error(
+        `Failed to generate upload URL for article ${articleId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new InternalServerErrorException('Failed to generate upload URL');
     }
   }
@@ -234,7 +242,13 @@ export class VideosService {
       });
       await this.markArticleDraft(articleId);
       return video;
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `Failed to upload video for article ${articleId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new InternalServerErrorException('Failed to upload video');
     } finally {
       await unlink(file.path).catch(() => undefined);

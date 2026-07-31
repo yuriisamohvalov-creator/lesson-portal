@@ -1,8 +1,6 @@
-import { apiFetch, getApiUrl, getAccessToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 export const MAX_VIDEO_MB = Number(process.env.NEXT_PUBLIC_MAX_VIDEO_SIZE_MB || '5000');
-export const DIRECT_UPLOAD_MAX_MB = 100;
-
 export type VideoTab = 'youtube' | 'upload';
 
 export function formatMaxVideoSize(): string {
@@ -70,47 +68,33 @@ export async function uploadArticleVideo(options: {
     }
 
     const setProgress = onProgress || (() => undefined);
-    const usePresigned = videoFile.size > DIRECT_UPLOAD_MAX_MB * 1024 * 1024;
-
-    if (usePresigned) {
-      const { uploadUrl, s3Key } = await apiFetch<{ uploadUrl: string; s3Key: string }>(
-        `/articles/${articleId}/videos/upload-url`,
-        {
-          method: 'POST',
-          body: {
-            fileName: videoFile.name,
-            fileSize: videoFile.size,
-            contentType: videoFile.type || 'video/mp4',
-          },
-        },
-      );
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', uploadUrl, true);
-      xhr.setRequestHeader('Content-Type', videoFile.type || 'video/mp4');
-      const uploadPromise = uploadWithProgress(xhr, setProgress);
-      xhr.send(videoFile);
-      await uploadPromise;
-
-      await apiFetch(`/articles/${articleId}/videos/confirm`, {
+    // Send every video directly to object storage. Proxying even relatively small
+    // files through Next.js and NestJS adds two failure points and used to surface
+    // as an opaque 500 while leaving the article draft already saved.
+    const contentType = videoFile.type || 'video/mp4';
+    const { uploadUrl, s3Key } = await apiFetch<{ uploadUrl: string; s3Key: string }>(
+      `/articles/${articleId}/videos/upload-url`,
+      {
         method: 'POST',
-        body: { s3Key, contentType: videoFile.type || 'video/mp4' },
-      });
-    } else {
-      const formData = new FormData();
-      formData.append('file', videoFile);
+        body: {
+          fileName: videoFile.name,
+          fileSize: videoFile.size,
+          contentType,
+        },
+      },
+    );
 
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', getApiUrl(`/articles/${articleId}/videos/upload`));
-      const token = getAccessToken();
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      }
-      xhr.withCredentials = true;
-      const uploadPromise = uploadWithProgress(xhr, setProgress);
-      xhr.send(formData);
-      await uploadPromise;
-    }
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.setRequestHeader('Content-Type', contentType);
+    const uploadPromise = uploadWithProgress(xhr, setProgress);
+    xhr.send(videoFile);
+    await uploadPromise;
+
+    await apiFetch(`/articles/${articleId}/videos/confirm`, {
+      method: 'POST',
+      body: { s3Key, contentType },
+    });
     return true;
   }
 
