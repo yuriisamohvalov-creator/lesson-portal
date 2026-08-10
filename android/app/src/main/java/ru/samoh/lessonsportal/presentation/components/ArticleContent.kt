@@ -15,7 +15,7 @@ fun HtmlContent(html: String, modifier: Modifier = Modifier) {
     AndroidView(
         modifier = modifier.fillMaxWidth().heightIn(min = 180.dp),
         factory = { context -> WebView(context).apply { settings.javaScriptEnabled = false } },
-        update = { webView -> webView.loadDataWithBaseURL(BuildConfig.API_BASE_URL, wrapHtml(html), "text/html", "UTF-8", null) },
+        update = { webView -> if (webView.tag != html) { webView.tag = html; webView.loadDataWithBaseURL(BuildConfig.API_BASE_URL, wrapHtml(html), "text/html", "UTF-8", null) } },
     )
 }
 
@@ -24,7 +24,7 @@ fun YouTubePlayer(videoId: String, modifier: Modifier = Modifier) {
     AndroidView(
         modifier = modifier.fillMaxWidth().aspectRatio(16f / 9f),
         factory = { context -> WebView(context).apply { settings.javaScriptEnabled = true } },
-        update = { it.loadDataWithBaseURL("https://www.youtube.com", """<html><body style="margin:0"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/$videoId" frameborder="0" allowfullscreen></iframe></body></html>""", "text/html", "UTF-8", null) },
+        update = { if (it.tag != videoId) { it.tag = videoId; it.loadDataWithBaseURL("https://www.youtube.com", """<html><body style="margin:0"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/$videoId" frameborder="0" allowfullscreen></iframe></body></html>""", "text/html", "UTF-8", null) } },
     )
 }
 

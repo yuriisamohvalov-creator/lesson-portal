@@ -37,7 +37,7 @@ object ApiErrorHandler {
             else -> AppException.Kind.UNKNOWN
         }
         val fallback = when (kind) {
-            AppException.Kind.UNAUTHORIZED -> "Неверные учётные данные или сессия истекла"
+            AppException.Kind.UNAUTHORIZED -> "Сессия истекла, войдите снова"
             AppException.Kind.FORBIDDEN -> "Недостаточно прав"
             AppException.Kind.CONFLICT -> "Данные уже существуют или были изменены"
             AppException.Kind.SERVER -> "Ошибка сервера, попробуйте позже"

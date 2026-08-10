@@ -10,6 +10,15 @@ import ru.samoh.lessonsportal.presentation.auth.AuthViewModel
 import ru.samoh.lessonsportal.presentation.theme.LessonsPortalTheme
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import ru.samoh.lessonsportal.presentation.components.OfflineBanner
+import ru.samoh.lessonsportal.presentation.components.rememberIsOnline
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -20,7 +29,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val windowSize = calculateWindowSizeClass(this)
-            LessonsPortalTheme { AppNavigation(authViewModel, windowSize.widthSizeClass) }
+            LessonsPortalTheme {
+                val globalSnackbar = remember { SnackbarHostState() }
+                Box(Modifier.fillMaxSize()) {
+                    AppNavigation(authViewModel, windowSize.widthSizeClass)
+                    if (!rememberIsOnline()) OfflineBanner(Modifier.align(Alignment.TopCenter))
+                    SnackbarHost(globalSnackbar, Modifier.align(Alignment.BottomCenter))
+                }
+            }
         }
     }
 }

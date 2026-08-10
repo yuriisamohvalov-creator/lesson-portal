@@ -22,14 +22,17 @@ import androidx.paging.compose.LazyPagingItems
 import ru.samoh.lessonsportal.R
 import ru.samoh.lessonsportal.domain.model.ArticleStatus
 import ru.samoh.lessonsportal.domain.model.Course
+import ru.samoh.lessonsportal.presentation.components.ListSkeleton
+import ru.samoh.lessonsportal.presentation.components.DetailSkeleton
+import ru.samoh.lessonsportal.presentation.components.EmptyState
 
 @OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 fun CoursesScreen(courses: LazyPagingItems<Course>, width: WindowWidthSizeClass, onCourse: (String) -> Unit) {
     when (val refresh = courses.loadState.refresh) {
-        is LoadState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
+        is LoadState.Loading -> ListSkeleton()
         is LoadState.Error -> Column(Modifier.padding(24.dp)) { Text(refresh.error.message ?: stringResource(R.string.loading_error)); Button(onClick = courses::retry) { Text(stringResource(R.string.retry)) } }
-        else -> {
+        else -> if (courses.itemCount == 0) EmptyState(stringResource(R.string.courses_empty)) else {
             val refreshing = courses.loadState.refresh is LoadState.Loading
             val pullRefreshState = rememberPullRefreshState(refreshing, courses::refresh)
             Box(Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
@@ -60,7 +63,7 @@ private fun CourseCard(course: Course, onClick: () -> Unit) {
 @Composable
 fun CourseDetailScreen(state: CourseDetailUiState, onArticle: (String) -> Unit) {
     when {
-        state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
+        state.loading -> DetailSkeleton()
         state.course == null -> Text(state.error ?: stringResource(R.string.course_not_found), modifier = Modifier.padding(24.dp))
         else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Text(state.course.name, style = MaterialTheme.typography.headlineMedium) }

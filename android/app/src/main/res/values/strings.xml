@@ -54,4 +54,5 @@
     <string name="logout_confirmation_title">Выход из аккаунта</string>
     <string name="logout_confirmation_message">Вы действительно хотите выйти?</string>
     <string name="cancel">Отмена</string>
+    <string name="courses_empty">Курсы не найдены</string>
 </resources>

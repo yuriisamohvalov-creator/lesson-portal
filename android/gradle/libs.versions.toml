@@ -18,6 +18,8 @@ room = "2.6.1"
 securityCrypto = "1.1.0-alpha06"
 coroutines = "1.8.1"
 junit = "4.13.2"
+timber = "5.0.1"
+leakcanary = "2.14"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.13.1" }
@@ -55,6 +57,8 @@ hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt"
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
+leakcanary = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

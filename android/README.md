@@ -1,28 +1,54 @@
 # Lessons Portal Android
 
-Android-клиент размещён в отдельном Gradle-проекте и требует JDK 17+ и Android SDK 34.
+Android-клиент портала на Kotlin и Jetpack Compose. Минимальная версия — Android 8.0 (API 26), target SDK — 34.
 
-## Проверка
+## Локальная сборка
+
+Требуются JDK 17 и Android SDK 34.
 
 ```bash
-./gradlew testDebugUnitTest assembleDebug
+cd android
+./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest
 ```
 
-Debug-сборка обращается к backend эмулятора по `http://10.0.2.2:3001/api/`.
-Release-сборка использует `https://lessons.samoh.ru/api/`. Cleartext разрешён только в debug manifest.
+Debug-сборка обращается к `http://10.0.2.2:3001/api/`, поэтому backend на машине разработчика должен слушать порт 3001. Release использует `https://lessons.samoh.ru/api/`.
 
-## Текущий объём
+Unsigned release bundle для проверки R8:
 
-- Compose + Material 3;
-- Hilt;
-- Retrofit, Kotlin Serialization и OkHttp;
-- зашифрованное хранение access/refresh токенов;
-- отдельный Retrofit-клиент для refresh без рекурсивного authenticator;
-- Room-каркас для локальных черновиков;
-- Login/Register и переключение auth/main navigation.
-- каталог категорий и пагинируемый поиск статей;
-- детальная статья с безопасным HTML WebView, YouTube и комментариями;
-- Room-кеш категорий, списка и просмотренных статей с offline fallback.
-- Markdown-редактор статей с HTML preview, изображениями и PDF-импортом;
-- локальные черновики с автосохранением и WorkManager-синхронизацией;
-- раздел «Мои статьи» и отправка материалов на модерацию.
+```bash
+./gradlew bundleRelease
+```
+
+## Архитектура
+
+- `data` — Retrofit API, DTO, Room и реализации репозиториев;
+- `domain` — модели, интерфейсы репозиториев и use-case'ы;
+- `presentation` — Compose-экраны и ViewModel;
+- `navigation` — авторизованный граф и четыре основных раздела;
+- `worker` — синхронизация локальных черновиков.
+
+Hilt отвечает за внедрение зависимостей, Paging 3 — за каталоги, EncryptedSharedPreferences — за refresh token, Room — за офлайн-кеш статей.
+
+## Подписанный релиз
+
+Keystore не хранится в Git. Для локальной подписанной сборки положите его в `android/keystore.jks` либо задайте `KEYSTORE_FILE`, затем экспортируйте:
+
+```bash
+export KEYSTORE_PASSWORD='...'
+export KEY_ALIAS='lessons-portal'
+export KEY_PASSWORD='...'
+./gradlew bundleRelease
+```
+
+GitHub Actions использует secrets:
+
+- `KEYSTORE_BASE64`;
+- `KEYSTORE_PASSWORD`;
+- `KEY_ALIAS`;
+- `KEY_PASSWORD`.
+
+Результат находится в `app/build/outputs/bundle/release/`.
+
+## Релизные ворота
+
+Перед публикацией необходимо запустить Compose UI-тесты на эмуляторе, smoke-тесты на Android 8/10/12/14, проверить тёмную тему и offline-режим, загрузить AAB в Google Play Internal Testing и изучить pre-launch report.

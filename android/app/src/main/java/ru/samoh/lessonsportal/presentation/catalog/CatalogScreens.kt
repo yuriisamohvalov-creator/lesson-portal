@@ -26,6 +26,9 @@ import ru.samoh.lessonsportal.R
 import ru.samoh.lessonsportal.presentation.components.HtmlContent
 import ru.samoh.lessonsportal.presentation.components.YouTubePlayer
 import ru.samoh.lessonsportal.presentation.components.extractYouTubeId
+import ru.samoh.lessonsportal.presentation.components.ListSkeleton
+import ru.samoh.lessonsportal.presentation.components.DetailSkeleton
+import ru.samoh.lessonsportal.presentation.components.EmptyState
 
 @Composable
 @OptIn(ExperimentalMaterialApi::class)
@@ -83,9 +86,9 @@ fun ArticlesScreen(viewModel: ArticlesViewModel, onArticle: (String) -> Unit, on
 @Composable
 private fun ArticleList(articles: LazyPagingItems<ArticleListItem>, onArticle: (String) -> Unit) {
     when (val refresh = articles.loadState.refresh) {
-        is LoadState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
+        is LoadState.Loading -> ListSkeleton()
         is LoadState.Error -> ErrorState(refresh.error.message ?: stringResource(R.string.loading_error)) { articles.retry() }
-        else -> if (articles.itemCount == 0) Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { Text(stringResource(R.string.articles_empty)) }
+        else -> if (articles.itemCount == 0) EmptyState(stringResource(R.string.articles_empty))
         else LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(articles.itemCount, key = { index -> articles.peek(index)?.id ?: index }) { index ->
                 articles[index]?.let { ArticleCard(it) { onArticle(it.id) } }
@@ -110,7 +113,7 @@ private fun ArticleCard(article: ArticleListItem, onClick: () -> Unit) {
 @OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
 fun ArticleDetailScreen(state: ArticleDetailUiState, onBack: () -> Unit, onRetry: () -> Unit, onRefreshComments: () -> Unit, onAddComment: (String) -> Unit) {
     when {
-        state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
+        state.loading -> DetailSkeleton()
         state.article == null -> ErrorState(state.error ?: stringResource(R.string.article_not_found), onRetry)
         else -> {
             val article = state.article

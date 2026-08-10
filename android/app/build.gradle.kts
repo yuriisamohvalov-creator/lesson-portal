@@ -20,13 +20,28 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"https://lessons.samoh.ru/api/\"")
     }
 
+    val releaseStore = System.getenv("KEYSTORE_FILE")?.let(::file) ?: file("../keystore.jks")
+    val releaseStorePassword = System.getenv("KEYSTORE_PASSWORD")
+    val releaseKeyAlias = System.getenv("KEY_ALIAS")
+    val releaseKeyPassword = System.getenv("KEY_PASSWORD")
+    val hasReleaseSigning = releaseStore.exists() && listOf(releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
+    signingConfigs {
+        if (hasReleaseSigning) create("release") {
+            storeFile = releaseStore
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+        }
+    }
     buildTypes {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3001/api/\"")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -76,6 +91,8 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.commonmark)
+    implementation(libs.timber)
+    debugImplementation(libs.leakcanary)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

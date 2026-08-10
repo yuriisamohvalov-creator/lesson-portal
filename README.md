@@ -22,6 +22,8 @@
 
 Стек: Kotlin, Jetpack Compose, Hilt, Retrofit, Room, Paging 3, Navigation Compose, Coil.
 
+Команды сборки, архитектура, настройка подписи и CI secrets описаны в [android/README.md](android/README.md). Android CI запускает unit-тесты, собирает debug APK и формирует подписанный release AAB для ветки `main`.
+
 ## Быстрый старт (разработка)
 
 1. Скопируйте `.env.example` в `.env`:
