@@ -6,8 +6,21 @@
 
 - **Backend**: NestJS + Prisma + PostgreSQL
 - **Frontend**: Next.js (SSR/SSG)
+- **Android**: Kotlin + Jetpack Compose
 - **Хранилище**: MinIO (S3)
 - **Кэш**: Redis
+
+## Android-приложение
+
+Мобильное приложение для портала разрабатывается в папке `android/`.
+
+- **Техническое задание**: [docs/android-app-spec.md](docs/android-app-spec.md)
+- **API-контракт**: [docs/android-api-contract.md](docs/android-api-contract.md)
+- **Backend-изменения для mobile**: [docs/android-backend-changes.md](docs/android-backend-changes.md)
+- **Архитектура**: [docs/android-architecture.md](docs/android-architecture.md)
+- **Пошаговые задания для AI-агента**: [docs/android-tasks/](docs/android-tasks/)
+
+Стек: Kotlin, Jetpack Compose, Hilt, Retrofit, Room, Paging 3, Navigation Compose, Coil.
 
 ## Быстрый старт (разработка)
 
@@ -80,6 +93,8 @@ Self-hosted GitLab: `ssh://git@gitlab.local:2222/yurii.samohvalov/lesson-portal.
 ## Структура
 
 ```
+├── android/           # Android-приложение (Kotlin + Jetpack Compose)
+│   └── app/           # Исходный код приложения
 ├── backend/           # NestJS API
 │   ├── prisma/        # Schema и миграции
 │   └── src/           # Модули: auth, users, categories, courses, articles, moderation, admin
