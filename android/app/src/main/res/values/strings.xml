@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Lessons Portal</string>
+    <string name="email">Email</string>
+    <string name="password">Пароль</string>
+    <string name="password_confirmation">Подтверждение пароля</string>
+    <string name="passwords_mismatch">Пароли не совпадают</string>
+    <string name="display_name">Отображаемое имя</string>
+    <string name="login">Войти</string>
+    <string name="register">Зарегистрироваться</string>
+    <string name="create_account">Создать аккаунт</string>
+    <string name="already_registered">Уже есть аккаунт</string>
+    <string name="main_placeholder">Главный экран</string>
+</resources>

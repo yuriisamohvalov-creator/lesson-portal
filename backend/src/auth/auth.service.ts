@@ -90,6 +90,7 @@ export class AuthService {
 
     return {
       accessToken,
+      refreshToken,
       user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role },
     };
   }
