@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { CommentsModule } from './comments/comments.module';
 import { VideosModule } from './videos/videos.module';
 import { PdfImportModule } from './pdf-import/pdf-import.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -39,6 +40,7 @@ import { AppService } from './app.service';
     CommentsModule,
     VideosModule,
     PdfImportModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [

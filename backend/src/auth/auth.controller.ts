@@ -13,6 +13,7 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './strategies/jwt.strategy';
 
@@ -38,8 +39,8 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Req() req: Request) {
-    const token = req.cookies?.refresh_token;
+  async refresh(@Req() req: Request, @Body() dto: RefreshTokenDto) {
+    const token = req.cookies?.refresh_token || dto?.refreshToken;
     if (!token) {
       throw new UnauthorizedException('No refresh token');
     }

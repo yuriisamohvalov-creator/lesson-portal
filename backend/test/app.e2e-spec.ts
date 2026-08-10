@@ -11,6 +11,7 @@ const prisma = new PrismaClient({
 describe('Articles (e2e)', () => {
   let app: INestApplication;
   let userToken: string;
+  let userRefreshToken: string;
   let modToken: string;
   let adminToken: string;
   let articleId: string;
@@ -59,7 +60,25 @@ describe('Articles (e2e)', () => {
         .expect(200);
 
       expect(res.body.accessToken).toBeDefined();
+      expect(res.body.refreshToken).toBeDefined();
       userToken = res.body.accessToken;
+      userRefreshToken = res.body.refreshToken;
+    });
+
+    it('should refresh an access token from a mobile request body', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .send({ refreshToken: userRefreshToken })
+        .expect(200);
+
+      expect(res.body.accessToken).toBeDefined();
+    });
+
+    it('should reject an invalid mobile refresh token', async () => {
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .send({ refreshToken: 'invalid-token' })
+        .expect(401);
     });
 
     it('should login as moderator', async () => {
