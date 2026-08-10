@@ -9,15 +9,16 @@ import androidx.navigation.compose.rememberNavController
 import ru.samoh.lessonsportal.presentation.auth.AuthViewModel
 import ru.samoh.lessonsportal.presentation.auth.LoginScreen
 import ru.samoh.lessonsportal.presentation.auth.RegisterScreen
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 
 @Composable
-fun AppNavigation(viewModel: AuthViewModel) {
+fun AppNavigation(viewModel: AuthViewModel, width: WindowWidthSizeClass) {
     val isAuthenticated by viewModel.isAuthenticated.collectAsState(initial = false)
     val state by viewModel.state.collectAsState()
     val navController = rememberNavController()
 
     if (isAuthenticated) {
-        CatalogNavigation()
+        MainNavigation(width)
         return
     }
 

@@ -68,7 +68,7 @@ fun CatalogNavigation() {
         ) {
             val viewModel: ArticleDetailViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
-            ArticleDetailScreen(state, onBack = { navController.popBackStack() }, onRetry = viewModel::load, onAddComment = viewModel::addComment)
+            ArticleDetailScreen(state, onBack = { navController.popBackStack() }, onRetry = viewModel::load, onRefreshComments = viewModel::refreshComments, onAddComment = viewModel::addComment)
         }
     }
 }

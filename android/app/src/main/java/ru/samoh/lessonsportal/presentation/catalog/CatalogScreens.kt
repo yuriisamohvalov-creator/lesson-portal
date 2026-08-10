@@ -107,13 +107,16 @@ private fun ArticleCard(article: ArticleListItem, onClick: () -> Unit) {
 }
 
 @Composable
-fun ArticleDetailScreen(state: ArticleDetailUiState, onBack: () -> Unit, onRetry: () -> Unit, onAddComment: (String) -> Unit) {
+@OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
+fun ArticleDetailScreen(state: ArticleDetailUiState, onBack: () -> Unit, onRetry: () -> Unit, onRefreshComments: () -> Unit, onAddComment: (String) -> Unit) {
     when {
         state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
         state.article == null -> ErrorState(state.error ?: stringResource(R.string.article_not_found), onRetry)
         else -> {
             val article = state.article
             var comment by remember { mutableStateOf("") }
+            val pullRefreshState = rememberPullRefreshState(state.refreshingComments, onRefreshComments)
+            Box(Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item { OutlinedButton(onClick = onBack) { Text(stringResource(R.string.back)) } }
                 if (article.isOffline) item { AssistChip(onClick = {}, label = { Text(stringResource(R.string.offline_version)) }) }
@@ -130,6 +133,8 @@ fun ArticleDetailScreen(state: ArticleDetailUiState, onBack: () -> Unit, onRetry
                     Button(onClick = { onAddComment(comment); comment = "" }, enabled = comment.isNotBlank() && !state.submittingComment, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(stringResource(R.string.send)) }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
+            }
+            PullRefreshIndicator(state.refreshingComments, pullRefreshState, Modifier.align(androidx.compose.ui.Alignment.TopCenter))
             }
         }
     }

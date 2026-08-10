@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import ru.samoh.lessonsportal.domain.model.*
 import ru.samoh.lessonsportal.domain.usecase.*
 
@@ -49,6 +50,7 @@ data class ArticleDetailUiState(
     val loading: Boolean = true,
     val article: Article? = null,
     val comments: List<Comment> = emptyList(),
+    val refreshingComments: Boolean = false,
     val submittingComment: Boolean = false,
     val error: String? = null,
 )
@@ -67,8 +69,10 @@ class ArticleDetailViewModel @Inject constructor(
 
     fun load() = viewModelScope.launch {
         _state.update { it.copy(loading = true, error = null) }
-        val article = getArticle(articleId)
-        val comments = getComments(articleId)
+        val articleRequest = async { getArticle(articleId) }
+        val commentsRequest = async { getComments(articleId) }
+        val article = articleRequest.await()
+        val comments = commentsRequest.await()
         article.onSuccess { item ->
             _state.value = ArticleDetailUiState(
                 loading = false, article = item,
@@ -85,6 +89,15 @@ class ArticleDetailViewModel @Inject constructor(
             addCommentUseCase(articleId, body).onSuccess { comment ->
                 _state.update { it.copy(comments = it.comments + comment, submittingComment = false) }
             }.onFailure { error -> _state.update { it.copy(submittingComment = false, error = error.message) } }
+        }
+    }
+
+    fun refreshComments() = viewModelScope.launch {
+        _state.update { it.copy(refreshingComments = true, error = null) }
+        getComments(articleId).onSuccess { comments ->
+            _state.update { it.copy(comments = comments, refreshingComments = false) }
+        }.onFailure { error ->
+            _state.update { it.copy(refreshingComments = false, error = error.message) }
         }
     }
 }

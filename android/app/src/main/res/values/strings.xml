@@ -42,4 +42,16 @@
     <string name="pending">На модерации</string>
     <string name="published">Опубликованные</string>
     <string name="rejected">Отклонённые</string>
+    <string name="courses">Курсы</string>
+    <string name="profile">Профиль</string>
+    <string name="course_not_found">Курс не найден</string>
+    <string name="profile_not_found">Профиль не найден</string>
+    <string name="edit_profile">Редактировать профиль</string>
+    <string name="save">Сохранить</string>
+    <string name="logout">Выйти</string>
+    <string name="moderation">Модерация</string>
+    <string name="admin_panel">Админ-панель</string>
+    <string name="logout_confirmation_title">Выход из аккаунта</string>
+    <string name="logout_confirmation_message">Вы действительно хотите выйти?</string>
+    <string name="cancel">Отмена</string>
 </resources>
