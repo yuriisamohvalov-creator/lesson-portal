@@ -106,6 +106,7 @@ deploy:local:
   variables:
     LOCAL_DEPLOY_DIR: "/home/gitlab-runner/lessons-portal"
     LOCAL_ENV_FILE: "/home/ysamohvalov/project/lessons-portal/.env"
+    NEXT_PUBLIC_API_URL: "http://localhost:3002"
   script:
     - bash deploy/gitlab-local-deploy.sh
   environment:

@@ -95,6 +95,23 @@ body {
   color: #E6E0CA;
   margin: 1.25em 0 0.5em;
   font-weight: 700;
+  line-height: 1.25;
+}
+.article-prose h1 {
+  font-size: 1.75rem;
+}
+.article-prose h2 {
+  font-size: 1.4rem;
+}
+.article-prose h3 {
+  font-size: 1.2rem;
+}
+.article-prose blockquote {
+  border-left: 3px solid #7E9CD8;
+  padding-left: 1rem;
+  margin: 1em 0;
+  color: #C8C0A8;
+  font-style: italic;
 }
 .article-prose p {
   margin-bottom: 1em;

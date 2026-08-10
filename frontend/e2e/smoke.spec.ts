@@ -60,7 +60,7 @@ test.describe('Login flow', () => {
     await page.fill('input[type="password"]', 'testpass123');
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL('/');
-    await expect(page.locator('a[href="/profile"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Профиль', exact: true })).toBeVisible();
   });
 });
 

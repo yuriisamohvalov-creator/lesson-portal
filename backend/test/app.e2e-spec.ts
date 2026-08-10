@@ -113,12 +113,22 @@ describe('Articles (e2e)', () => {
       expect(res.body.status).toBe('PENDING');
     });
 
-    it('should not allow editing PENDING article', async () => {
-      await request(app.getHttpServer())
+    it('should return an edited PENDING article to DRAFT', async () => {
+      const updateRes = await request(app.getHttpServer())
         .patch(`/api/articles/${articleId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ title: 'Updated Title' })
-        .expect(409);
+        .expect(200);
+
+      expect(updateRes.body.status).toBe('DRAFT');
+      expect(updateRes.body.title).toBe('Updated Title');
+
+      const submitRes = await request(app.getHttpServer())
+        .post(`/api/articles/${articleId}/submit`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+
+      expect(submitRes.body.status).toBe('PENDING');
     });
 
     it('should not show PENDING article to anonymous', async () => {
