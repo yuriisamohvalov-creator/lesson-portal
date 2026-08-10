@@ -20,3 +20,6 @@ Release-сборка использует `https://lessons.samoh.ru/api/`. Clear
 - отдельный Retrofit-клиент для refresh без рекурсивного authenticator;
 - Room-каркас для локальных черновиков;
 - Login/Register и переключение auth/main navigation.
+- каталог категорий и пагинируемый поиск статей;
+- детальная статья с безопасным HTML WebView, YouTube и комментариями;
+- Room-кеш категорий, списка и просмотренных статей с offline fallback.

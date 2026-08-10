@@ -16,6 +16,10 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import ru.samoh.lessonsportal.BuildConfig
 import ru.samoh.lessonsportal.data.remote.api.AuthApi
 import ru.samoh.lessonsportal.data.remote.api.UserApi
+import ru.samoh.lessonsportal.data.remote.api.ArticlesApi
+import ru.samoh.lessonsportal.data.remote.api.CategoriesApi
+import ru.samoh.lessonsportal.data.remote.api.CommentsApi
+import ru.samoh.lessonsportal.data.remote.api.VideosApi
 import ru.samoh.lessonsportal.data.remote.interceptor.AuthInterceptor
 import ru.samoh.lessonsportal.data.remote.interceptor.TokenAuthenticator
 
@@ -68,4 +72,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideUserApi(retrofit: Retrofit): UserApi = retrofit.create(UserApi::class.java)
+
+    @Provides @Singleton fun provideArticlesApi(retrofit: Retrofit): ArticlesApi = retrofit.create(ArticlesApi::class.java)
+    @Provides @Singleton fun provideCategoriesApi(retrofit: Retrofit): CategoriesApi = retrofit.create(CategoriesApi::class.java)
+    @Provides @Singleton fun provideCommentsApi(retrofit: Retrofit): CommentsApi = retrofit.create(CommentsApi::class.java)
+    @Provides @Singleton fun provideVideosApi(retrofit: Retrofit): VideosApi = retrofit.create(VideosApi::class.java)
 }

@@ -10,4 +10,17 @@
     <string name="create_account">Создать аккаунт</string>
     <string name="already_registered">Уже есть аккаунт</string>
     <string name="main_placeholder">Главный экран</string>
+    <string name="catalog">Каталог</string>
+    <string name="all_articles">Все статьи</string>
+    <string name="article_count">Статей: %1$d</string>
+    <string name="back">Назад</string>
+    <string name="article_search">Поиск статей</string>
+    <string name="loading_error">Ошибка загрузки</string>
+    <string name="articles_empty">Статьи не найдены</string>
+    <string name="article_not_found">Статья не найдена</string>
+    <string name="offline_version">Офлайн-версия</string>
+    <string name="comments">Комментарии</string>
+    <string name="comment">Комментарий</string>
+    <string name="send">Отправить</string>
+    <string name="retry">Повторить</string>
 </resources>
