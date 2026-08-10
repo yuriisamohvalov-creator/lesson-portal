@@ -15,6 +15,8 @@ import ru.samoh.lessonsportal.data.repository.UploadsRepositoryImpl
 import ru.samoh.lessonsportal.data.repository.PdfImportRepositoryImpl
 import ru.samoh.lessonsportal.data.repository.DraftRepositoryImpl
 import ru.samoh.lessonsportal.data.repository.CoursesRepositoryImpl
+import ru.samoh.lessonsportal.data.repository.ModerationRepositoryImpl
+import ru.samoh.lessonsportal.data.repository.AdminRepositoryImpl
 import ru.samoh.lessonsportal.domain.repository.AuthRepository
 import ru.samoh.lessonsportal.domain.repository.UserRepository
 import ru.samoh.lessonsportal.domain.repository.ArticlesRepository
@@ -25,6 +27,8 @@ import ru.samoh.lessonsportal.domain.repository.UploadsRepository
 import ru.samoh.lessonsportal.domain.repository.PdfImportRepository
 import ru.samoh.lessonsportal.domain.repository.DraftRepository
 import ru.samoh.lessonsportal.domain.repository.CoursesRepository
+import ru.samoh.lessonsportal.domain.repository.ModerationRepository
+import ru.samoh.lessonsportal.domain.repository.AdminRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -45,4 +49,6 @@ abstract class RepositoryModule {
     @Binds @Singleton abstract fun bindPdfImportRepository(implementation: PdfImportRepositoryImpl): PdfImportRepository
     @Binds @Singleton abstract fun bindDraftRepository(implementation: DraftRepositoryImpl): DraftRepository
     @Binds @Singleton abstract fun bindCoursesRepository(implementation: CoursesRepositoryImpl): CoursesRepository
+    @Binds @Singleton abstract fun bindModerationRepository(implementation: ModerationRepositoryImpl): ModerationRepository
+    @Binds @Singleton abstract fun bindAdminRepository(implementation: AdminRepositoryImpl): AdminRepository
 }

@@ -14,6 +14,9 @@ import ru.samoh.lessonsportal.presentation.courses.*
 import ru.samoh.lessonsportal.presentation.editor.*
 import ru.samoh.lessonsportal.presentation.myarticles.*
 import ru.samoh.lessonsportal.presentation.profile.*
+import ru.samoh.lessonsportal.presentation.moderation.*
+import ru.samoh.lessonsportal.presentation.admin.*
+import ru.samoh.lessonsportal.domain.model.UserRole
 
 private data class MainTab(val route: String, val label: String, val short: String)
 private val mainTabs = listOf(
@@ -69,15 +72,29 @@ fun MainNavigation(width: WindowWidthSizeClass) {
             }
             composable("profile") {
                 val vm: ProfileViewModel = hiltViewModel(); val state by vm.state.collectAsState()
-                ProfileScreen(state, vm::load, { navController.navigate("profile/edit") }, { navController.navigate("moderation-placeholder") }, { navController.navigate("admin-placeholder") }, vm::logout)
+                ProfileScreen(state, vm::load, { navController.navigate("profile/edit") }, { navController.navigate("moderation") }, { navController.navigate("admin") }, vm::logout)
             }
             composable("profile/edit") {
                 val vm: ProfileViewModel = hiltViewModel(); val state by vm.state.collectAsState()
                 LaunchedEffect(state.updated) { if (state.updated) navController.navigate("profile") { popUpTo("profile") { inclusive = true } } }
                 EditProfileScreen(state, vm::update) { navController.popBackStack() }
             }
-            composable("moderation-placeholder") { Text("Модерация будет реализована на этапе 5") }
-            composable("admin-placeholder") { Text("Админ-панель будет реализована на этапе 5") }
+            composable("moderation") {
+                val profile: ProfileViewModel = hiltViewModel(); val profileState by profile.state.collectAsState()
+                when {
+                    profileState.loading -> CircularProgressIndicator()
+                    profileState.user?.role !in listOf(UserRole.MODERATOR, UserRole.ADMIN) -> AccessDeniedScreen { navController.popBackStack() }
+                    else -> { val vm: ModerationViewModel = hiltViewModel(); val state by vm.state.collectAsState(); ModerationScreen(state, { navController.popBackStack() }, vm::refresh, vm::approve, vm::reject, vm::consumeMessage) }
+                }
+            }
+            composable("admin") {
+                val profile: ProfileViewModel = hiltViewModel(); val profileState by profile.state.collectAsState()
+                when {
+                    profileState.loading -> CircularProgressIndicator()
+                    profileState.user?.role != UserRole.ADMIN -> AccessDeniedScreen { navController.popBackStack() }
+                    else -> { val vm: AdminViewModel = hiltViewModel(); val state by vm.state.collectAsState(); AdminScreen(state, { navController.popBackStack() }, vm::refresh, vm::changeRole, vm::setBlocked, vm::saveCategory, vm::consumeMessage) }
+                }
+            }
         }
     }
 }
