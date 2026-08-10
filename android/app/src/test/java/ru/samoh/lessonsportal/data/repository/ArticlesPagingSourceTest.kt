@@ -43,11 +43,21 @@ class ArticlesPagingSourceTest {
                 meta = PageMetaDto(1, 1, 20, 1),
             )
         override suspend fun getArticle(id: String): ArticleDto = error("unused")
+        override suspend fun createArticle(request: CreateArticleRequest): ArticleDto = error("unused")
+        override suspend fun updateArticle(id: String, request: UpdateArticleRequest): ArticleDto = error("unused")
+        override suspend fun deleteArticle(id: String) = DeleteArticleResponse(true)
+        override suspend fun submitArticle(id: String): ArticleDto = error("unused")
+        override suspend fun getMyArticles(): List<ArticleDto> = emptyList()
     }
 
     private class FailingArticlesApi : ArticlesApi {
         override suspend fun getArticles(page: Int, limit: Int, categoryId: String?, search: String?): ArticleListResponseDto = error("offline")
         override suspend fun getArticle(id: String): ArticleDto = error("offline")
+        override suspend fun createArticle(request: CreateArticleRequest): ArticleDto = error("offline")
+        override suspend fun updateArticle(id: String, request: UpdateArticleRequest): ArticleDto = error("offline")
+        override suspend fun deleteArticle(id: String): DeleteArticleResponse = error("offline")
+        override suspend fun submitArticle(id: String): ArticleDto = error("offline")
+        override suspend fun getMyArticles(): List<ArticleDto> = error("offline")
     }
 
     private class FakeArticleDao : ArticleDao {

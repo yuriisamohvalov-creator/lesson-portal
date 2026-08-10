@@ -23,6 +23,8 @@ class CategoriesScreenTest {
                     onRefresh = {},
                     onCategory = { selectedCategory = it },
                     onAll = {},
+                    onMyArticles = {},
+                    onNewArticle = {},
                 )
             }
         }

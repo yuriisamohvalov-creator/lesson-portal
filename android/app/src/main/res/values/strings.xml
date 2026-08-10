@@ -23,4 +23,23 @@
     <string name="comment">Комментарий</string>
     <string name="send">Отправить</string>
     <string name="retry">Повторить</string>
+    <string name="my_articles">Мои статьи</string>
+    <string name="new_article">Новая статья</string>
+    <string name="edit_article">Редактирование</string>
+    <string name="title">Заголовок</string>
+    <string name="category">Категория</string>
+    <string name="editor">Редактор</string>
+    <string name="preview">Preview</string>
+    <string name="markdown">Markdown</string>
+    <string name="image">Изображение</string>
+    <string name="save_draft">Сохранить черновик</string>
+    <string name="save_server">Сохранить на сервер</string>
+    <string name="submit_moderation">Отправить на модерацию</string>
+    <string name="delete">Удалить</string>
+    <string name="untitled">Без названия</string>
+    <string name="local_draft">Локальный черновик</string>
+    <string name="drafts">Черновики</string>
+    <string name="pending">На модерации</string>
+    <string name="published">Опубликованные</string>
+    <string name="rejected">Отклонённые</string>
 </resources>

@@ -8,13 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
+import ru.samoh.lessonsportal.BuildConfig
 
 @Composable
 fun HtmlContent(html: String, modifier: Modifier = Modifier) {
     AndroidView(
         modifier = modifier.fillMaxWidth().heightIn(min = 180.dp),
         factory = { context -> WebView(context).apply { settings.javaScriptEnabled = false } },
-        update = { webView -> webView.loadDataWithBaseURL(null, wrapHtml(html), "text/html", "UTF-8", null) },
+        update = { webView -> webView.loadDataWithBaseURL(BuildConfig.API_BASE_URL, wrapHtml(html), "text/html", "UTF-8", null) },
     )
 }
 

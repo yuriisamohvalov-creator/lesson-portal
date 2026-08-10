@@ -18,6 +18,8 @@ data class DraftArticleEntity(
     val content: String,
     val categoryId: String?,
     val updatedAt: Long,
+    val isSynced: Boolean = false,
+    val lastError: String? = null,
 )
 
 @Entity(tableName = "categories")
@@ -72,6 +74,21 @@ interface DraftArticleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(draft: DraftArticleEntity)
 
+    @Query("SELECT * FROM draft_articles WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): DraftArticleEntity?
+
+    @Query("SELECT * FROM draft_articles WHERE articleId = :articleId LIMIT 1")
+    suspend fun getByArticleId(articleId: String): DraftArticleEntity?
+
+    @Query("SELECT * FROM draft_articles WHERE isSynced = 0 ORDER BY updatedAt")
+    suspend fun getUnsynced(): List<DraftArticleEntity>
+
+    @Query("UPDATE draft_articles SET isSynced = 1, articleId = :articleId, lastError = NULL WHERE id = :id")
+    suspend fun markSynced(id: String, articleId: String)
+
+    @Query("UPDATE draft_articles SET lastError = :message WHERE id = :id")
+    suspend fun markError(id: String, message: String)
+
     @Query("DELETE FROM draft_articles WHERE id = :id")
     suspend fun delete(id: String)
 }
@@ -106,7 +123,7 @@ interface ArticleDao {
     suspend fun getList(categoryId: String?, search: String?, limit: Int, offset: Int): List<ArticleListEntity>
 }
 
-@Database(entities = [DraftArticleEntity::class, CategoryEntity::class, ArticleEntity::class, ArticleListEntity::class], version = 3, exportSchema = false)
+@Database(entities = [DraftArticleEntity::class, CategoryEntity::class, ArticleEntity::class, ArticleListEntity::class], version = 4, exportSchema = false)
 abstract class LessonsPortalDatabase : RoomDatabase() {
     abstract fun draftArticleDao(): DraftArticleDao
     abstract fun categoryDao(): CategoryDao

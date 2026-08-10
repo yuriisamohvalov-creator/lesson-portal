@@ -44,6 +44,11 @@ class ArticleDetailViewModelTest {
         override suspend fun getArticle(id: String) = Result.success(
             Article(id, "Статья", "article", "<p>Текст</p>", ArticleStatus.PUBLISHED, Author("a", "Автор"), Category("c", "Категория", "cat"), "2026-01-01", "2026-01-01", null, emptyList())
         )
+        override suspend fun createArticle(title: String, content: String, categoryId: String) = getArticle("new")
+        override suspend fun updateArticle(id: String, title: String, content: String, categoryId: String) = getArticle(id)
+        override suspend fun deleteArticle(id: String) = Result.success(Unit)
+        override suspend fun submitArticle(id: String) = getArticle(id)
+        override suspend fun getMyArticles() = Result.success(emptyList<Article>())
     }
 
     private class FakeCommentsRepository : CommentsRepository {

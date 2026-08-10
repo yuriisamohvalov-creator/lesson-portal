@@ -38,6 +38,7 @@ async function bootstrap() {
     .addTag('articles', 'Article management')
     .addTag('moderation', 'Content moderation')
     .addTag('admin', 'Administration')
+    .addTag('uploads', 'Article image uploads')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

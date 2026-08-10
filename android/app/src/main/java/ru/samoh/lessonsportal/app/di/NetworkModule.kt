@@ -20,6 +20,8 @@ import ru.samoh.lessonsportal.data.remote.api.ArticlesApi
 import ru.samoh.lessonsportal.data.remote.api.CategoriesApi
 import ru.samoh.lessonsportal.data.remote.api.CommentsApi
 import ru.samoh.lessonsportal.data.remote.api.VideosApi
+import ru.samoh.lessonsportal.data.remote.api.UploadsApi
+import ru.samoh.lessonsportal.data.remote.api.PdfImportApi
 import ru.samoh.lessonsportal.data.remote.interceptor.AuthInterceptor
 import ru.samoh.lessonsportal.data.remote.interceptor.TokenAuthenticator
 
@@ -77,4 +79,6 @@ object NetworkModule {
     @Provides @Singleton fun provideCategoriesApi(retrofit: Retrofit): CategoriesApi = retrofit.create(CategoriesApi::class.java)
     @Provides @Singleton fun provideCommentsApi(retrofit: Retrofit): CommentsApi = retrofit.create(CommentsApi::class.java)
     @Provides @Singleton fun provideVideosApi(retrofit: Retrofit): VideosApi = retrofit.create(VideosApi::class.java)
+    @Provides @Singleton fun provideUploadsApi(retrofit: Retrofit): UploadsApi = retrofit.create(UploadsApi::class.java)
+    @Provides @Singleton fun providePdfImportApi(retrofit: Retrofit): PdfImportApi = retrofit.create(PdfImportApi::class.java)
 }

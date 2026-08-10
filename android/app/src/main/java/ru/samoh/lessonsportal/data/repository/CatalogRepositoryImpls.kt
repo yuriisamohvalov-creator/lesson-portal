@@ -10,6 +10,8 @@ import ru.samoh.lessonsportal.data.local.ArticleDao
 import ru.samoh.lessonsportal.data.local.CategoryDao
 import ru.samoh.lessonsportal.data.remote.api.*
 import ru.samoh.lessonsportal.data.remote.dto.CreateCommentRequest
+import ru.samoh.lessonsportal.data.remote.dto.CreateArticleRequest
+import ru.samoh.lessonsportal.data.remote.dto.UpdateArticleRequest
 import ru.samoh.lessonsportal.data.remote.error.ApiErrorHandler
 import ru.samoh.lessonsportal.data.remote.error.apiResult
 import ru.samoh.lessonsportal.domain.model.*
@@ -49,6 +51,14 @@ class ArticlesRepositoryImpl @Inject constructor(
     } catch (error: Throwable) {
         dao.getById(id)?.let { Result.success(it.toDomain()) } ?: Result.failure(ApiErrorHandler.map(error))
     }
+
+    override suspend fun createArticle(title: String, content: String, categoryId: String): Result<Article> =
+        apiResult { api.createArticle(CreateArticleRequest(title, content, categoryId)).toDomain() }
+    override suspend fun updateArticle(id: String, title: String, content: String, categoryId: String): Result<Article> =
+        apiResult { api.updateArticle(id, UpdateArticleRequest(title, content, categoryId)).toDomain() }
+    override suspend fun deleteArticle(id: String): Result<Unit> = apiResult { api.deleteArticle(id); Unit }
+    override suspend fun submitArticle(id: String): Result<Article> = apiResult { api.submitArticle(id).toDomain() }
+    override suspend fun getMyArticles(): Result<List<Article>> = apiResult { api.getMyArticles().map { it.toDomain() } }
 }
 
 @Singleton

@@ -29,7 +29,7 @@ import ru.samoh.lessonsportal.presentation.components.extractYouTubeId
 
 @Composable
 @OptIn(ExperimentalMaterialApi::class)
-fun CategoriesScreen(state: CategoriesUiState, onRefresh: () -> Unit, onCategory: (String) -> Unit, onAll: () -> Unit) {
+fun CategoriesScreen(state: CategoriesUiState, onRefresh: () -> Unit, onCategory: (String) -> Unit, onAll: () -> Unit, onMyArticles: () -> Unit, onNewArticle: () -> Unit) {
     when {
         state.loading && state.categories.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
         state.error != null && state.categories.isEmpty() -> ErrorState(state.error, onRefresh)
@@ -39,6 +39,10 @@ fun CategoriesScreen(state: CategoriesUiState, onRefresh: () -> Unit, onCategory
           Column(Modifier.fillMaxSize()) {
             Text(stringResource(R.string.catalog), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(16.dp))
             OutlinedButton(onClick = onAll, modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth()) { Text(stringResource(R.string.all_articles)) }
+            Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onMyArticles, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.my_articles)) }
+                Button(onClick = onNewArticle, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.new_article)) }
+            }
             LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(state.categories, key = { it.id }) { category ->
                     Card(Modifier.fillMaxWidth().clickable { onCategory(category.id) }) {
@@ -58,7 +62,7 @@ fun CategoriesScreen(state: CategoriesUiState, onRefresh: () -> Unit, onCategory
 
 @Composable
 @OptIn(ExperimentalMaterialApi::class)
-fun ArticlesScreen(viewModel: ArticlesViewModel, onArticle: (String) -> Unit, onBack: () -> Unit) {
+fun ArticlesScreen(viewModel: ArticlesViewModel, onArticle: (String) -> Unit, onNewArticle: () -> Unit, onBack: () -> Unit) {
     val query by viewModel.searchQuery.collectAsState()
     val articles = viewModel.articles.collectAsLazyPagingItems()
     val refreshing = articles.loadState.refresh is LoadState.Loading
@@ -72,6 +76,7 @@ fun ArticlesScreen(viewModel: ArticlesViewModel, onArticle: (String) -> Unit, on
         ArticleList(articles, onArticle)
       }
       PullRefreshIndicator(refreshing, pullState, Modifier.align(androidx.compose.ui.Alignment.TopCenter))
+      FloatingActionButton(onClick = onNewArticle, modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(16.dp)) { Text("+") }
     }
 }
 

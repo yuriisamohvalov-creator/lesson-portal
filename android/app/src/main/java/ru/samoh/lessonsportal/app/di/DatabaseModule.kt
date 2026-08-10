@@ -11,6 +11,7 @@ import javax.inject.Singleton
 import ru.samoh.lessonsportal.data.local.LessonsPortalDatabase
 import ru.samoh.lessonsportal.data.local.ArticleDao
 import ru.samoh.lessonsportal.data.local.CategoryDao
+import ru.samoh.lessonsportal.data.local.DraftArticleDao
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -24,4 +25,5 @@ object DatabaseModule {
 
     @Provides fun provideCategoryDao(database: LessonsPortalDatabase): CategoryDao = database.categoryDao()
     @Provides fun provideArticleDao(database: LessonsPortalDatabase): ArticleDao = database.articleDao()
+    @Provides fun provideDraftArticleDao(database: LessonsPortalDatabase): DraftArticleDao = database.draftArticleDao()
 }
