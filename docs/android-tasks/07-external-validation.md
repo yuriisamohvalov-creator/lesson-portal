@@ -1,3 +1,7 @@
+--- docs/android-tasks/07-external-validation.md (原始)
+
+
++++ docs/android-tasks/07-external-validation.md (修改后)
 # Внешние проверки Android-приложения (Этап 6)
 
 Этот документ описывает пошаговую инструкцию по проведению внешних проверок Android-приложения после завершения локальной разработки Этапа 6.
@@ -10,10 +14,10 @@
    ```bash
    # Проверка версии
    java -version
-   
+
    # Установка на Ubuntu/Debian
    sudo apt install openjdk-17-jdk
-   
+
    # Установка на macOS (через Homebrew)
    brew install openjdk@17
    ```
@@ -180,22 +184,22 @@ EMULATORS=("Pixel_6_API_26" "Pixel_6_API_29" "Pixel_6_API_31" "Pixel_6_API_34")
 
 for emulator in "${EMULATORS[@]}"; do
   echo "🚀 Запуск эмулятора: $emulator"
-  
+
   # Запуск эмулятора
   emulator -avd "$emulator" -no-boot-anim -no-window &
   EMULATOR_PID=$!
-  
+
   # Ожидание загрузки
   adb wait-for-device
   sleep 30
-  
+
   # Запуск тестов
   echo "🧪 Запуск тестов на $emulator"
   ./gradlew connectedAndroidTest
-  
+
   # Остановка эмулятора
   kill $EMULATOR_PID
-  
+
   echo "✅ Тесты на $emulator завершены"
 done
 ```
@@ -208,7 +212,7 @@ done
 
 1. Включить **Режим разработчика** на устройстве:
    - Настройки → О телефоне → 7 раз нажать на "Номер сборки"
-   
+
 2. Включить **USB Debugging**:
    - Настройки → Для разработчиков → Отладка по USB
 
@@ -218,7 +222,7 @@ done
    ```bash
    adb devices
    ```
-   
+
    Устройство должно отображаться в списке.
 
 ### 3.2 Установка debug-версии
@@ -288,7 +292,7 @@ keytool -genkey -v \
 # - Пароль для ключа (KEY_PASSWORD, можно нажать Enter для использования того же пароля)
 ```
 
-**Важно:** 
+**Важно:**
 - Сохраните keystore в надёжном месте
 - Никогда не коммитьте keystore в Git
 - Запомните все пароли (восстановление невозможно)
@@ -364,7 +368,7 @@ android {
    - **Язык по умолчанию**: Русский
    - **Приложение**: Бесплатное
    - **Пакет**: `ru.samoh.lessonsportal`
-   
+
 4. Подтвердить создание
 
 ### 5.3 Настройка Internal Testing
@@ -372,17 +376,17 @@ android {
 1. В меню слева выбрать **Testing** → **Internal testing**
 2. Нажать **Create new release**
 3. Загрузить AAB:
-   
+
    ```bash
    cd android
-   
+
    # Сборка signed release AAB (локально, если есть keystore)
    export KEYSTORE_PASSWORD=your_password
    export KEY_ALIAS=lessons-portal
    export KEY_PASSWORD=your_key_password
-   
+
    ./gradlew bundleRelease
-   
+
    # Файл будет расположен:
    # app/build/outputs/bundle/release/app-release.aab
    ```
@@ -605,5 +609,5 @@ adb logcat | grep -i "lessonsportal"
 
 ---
 
-**Дата обновления:** Декабрь 2025  
+**Дата обновления:** Декабрь 2025
 **Статус этапа 6:** Локальная часть завершена, внешние проверки готовы к выполнению
