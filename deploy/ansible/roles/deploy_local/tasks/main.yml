@@ -19,7 +19,14 @@
     --exclude .git
     --exclude backend/node_modules
     --exclude frontend/node_modules
+    --exclude backend/dist
+    --exclude android/.gradle
+    --exclude 'android/**/build'
     --exclude .env
+    --exclude .github
+    --exclude docs
+    --exclude deploy/ansible
+    --exclude .mimocode
     {{ project_root_on_control }}/
     {{ deploy_dir }}/
   changed_when: true
@@ -59,6 +66,23 @@
     chdir: "{{ deploy_dir }}"
   changed_when: true
 
+- name: Stop any existing local stack in deploy_dir
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    down --remove-orphans
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+  ignore_errors: true
+
+- name: Stop old lessons-portal compose project if ports are busy
+  ansible.builtin.command: docker compose -p lessons-portal down --remove-orphans
+  changed_when: true
+  ignore_errors: true
+
 - name: Start dev stack
   ansible.builtin.command: >
     docker compose
@@ -88,6 +112,64 @@
     exec -T backend npx prisma migrate deploy
   args:
     chdir: "{{ deploy_dir }}"
+  changed_when: true
+
+- name: Seed database with test data
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    exec -T backend npx prisma db seed
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+
+- name: Stage password reset script
+  ansible.builtin.copy:
+    src: reset-test-passwords.js
+    dest: "{{ deploy_dir }}/.reset-test-passwords.js"
+    mode: "0600"
+
+- name: Copy password reset script to backend container
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    cp .reset-test-passwords.js backend:/app/reset-test-passwords.js
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+
+- name: Reset test user passwords to testpass123
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    exec -T backend node /app/reset-test-passwords.js
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+  when: reset_test_passwords | default(true) | bool
+
+- name: Remove password reset script from backend container
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    exec -T backend rm -f /app/reset-test-passwords.js
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+  when: reset_test_passwords | default(true) | bool
+
+- name: Remove temporary password reset script from deploy dir
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}/.reset-test-passwords.js"
+    state: absent
   changed_when: true
 
 - name: Show dev stack status

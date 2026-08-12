@@ -25,7 +25,7 @@ Registry: **GitHub Container Registry (`ghcr.io`)** instead of the old `gitlab.l
 2. Copy and fill vault examples:
 
    ```bash
-   cp deploy/ansible/inventory/group_vars/brix_pc/vault.yml.example \
+   cp deploy/ansible/examples/vault-brix_pc.yml.example \
       deploy/ansible/inventory/group_vars/brix_pc/vault.yml
    # edit vault.yml with your real tokens
    ansible-vault encrypt deploy/ansible/inventory/group_vars/brix_pc/vault.yml
