@@ -58,16 +58,18 @@
 
 API: `https://lessons.samoh.ru/api/*` · Swagger: `https://lessons.samoh.ru/api/docs`
 
-## GitLab CI/CD
+## CI/CD и деплой (Ansible + GitHub Actions)
 
-Self-hosted GitLab: `ssh://git@gitlab.local:2222/yurii.samohvalov/lesson-portal.git`
+Полная инфраструктура развёртывания находится в `deploy/ansible/`:
 
-| Pipeline | Ветка | Деплой |
-|----------|-------|--------|
-| `deploy:local` | `develop` | dev-стек на runner-хосте (localhost:3002) |
-| `deploy:prod` | `stable-release` / tags | merge → brix-pc (lessons.samoh.ru); tags — manual |
+- `deploy/ansible/playbooks/deploy-local.yml` — локальный dev-стек
+- `deploy/ansible/playbooks/build-and-push.yml` — сборка и пуш образов в `ghcr.io`
+- `deploy/ansible/playbooks/deploy-brix-pc.yml` — продакшен-деплой на `brix-pc`
+- `deploy/ansible/playbooks/setup-nginx-brix-pc.yml` — настройка nginx + TLS
 
-Подробнее: [docs/gitlab-ci.md](docs/gitlab-ci.md)
+GitHub Actions workflow: `.github/workflows/deploy.yml` запускает тесты, собирает образы и деплоит на `brix-pc` при push в `stable-release` или tags.
+
+Подробнее: [deploy/ansible/README.md](deploy/ansible/README.md)
 
 ## Продакшен (локально)
 

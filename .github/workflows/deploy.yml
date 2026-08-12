@@ -1,0 +1,228 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - stable-release
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+  IMAGE_REPO: lesson-portal
+  NEXT_PUBLIC_API_URL: https://lessons.samoh.ru
+  NEXT_PUBLIC_MAX_VIDEO_SIZE_MB: 5000
+
+jobs:
+  backend-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run unit tests
+        run: npm test -- --testPathPattern='\.spec\.ts$' --passWithNoTests --maxWorkers=2
+
+  frontend-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+  build-images:
+    needs:
+      - backend-check
+      - frontend-check
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/stable-release' || startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies (for Prisma engines)
+        working-directory: backend
+        run: |
+          npm ci --no-audit --no-fund --ignore-scripts
+          npm rebuild argon2
+          npm install --no-save --no-audit --no-fund prisma@5.22.0
+          npx prisma generate
+
+      - name: Stage Prisma engines
+        working-directory: backend
+        run: |
+          mkdir -p .ci-prisma-engines
+          cp -a node_modules/prisma/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node .ci-prisma-engines/ || \
+            cp -a node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node .ci-prisma-engines/
+          cp -a node_modules/prisma/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x .ci-prisma-engines/ || \
+            cp -a node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x .ci-prisma-engines/
+          ls -la .ci-prisma-engines
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: tags
+        run: |
+          SHA="${{ github.sha }}"
+          SHORT_SHA="${SHA:0:8}"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            MOVABLE_TAG="${{ github.ref_name }}"
+          elif [[ "${{ github.ref_name }}" == "stable-release" ]]; then
+            MOVABLE_TAG="stable-release"
+          else
+            MOVABLE_TAG="${{ github.ref_name }}"
+          fi
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "movable=${MOVABLE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: runner
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-backend:${{ steps.tags.outputs.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-backend:${{ steps.tags.outputs.short_sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-backend:${{ steps.tags.outputs.movable }}
+          build-args: |
+            NPM_REGISTRY=https://registry.npmjs.org/
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          target: runner
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-frontend:${{ steps.tags.outputs.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-frontend:${{ steps.tags.outputs.short_sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-frontend:${{ steps.tags.outputs.movable }}
+          build-args: |
+            NPM_REGISTRY=https://registry.npmjs.org/
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_MAX_VIDEO_SIZE_MB=${{ env.NEXT_PUBLIC_MAX_VIDEO_SIZE_MB }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image references
+        run: |
+          echo "BACKEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-backend:${{ steps.tags.outputs.short_sha }}"
+          echo "FRONTEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_REPO }}-frontend:${{ steps.tags.outputs.short_sha }}"
+
+  deploy-brix-pc:
+    needs: build-images
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/stable-release' || startsWith(github.ref, 'refs/tags/')
+    environment:
+      name: production
+      url: https://lessons.samoh.ru
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --user ansible
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.BRIX_PC_SSH_PRIVATE_KEY }}
+
+      - name: Add brix-pc to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.BRIX_PC_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Compute deploy tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "deploy_tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref_name }}" == "stable-release" ]]; then
+            echo "deploy_tag=stable-release" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to brix-pc
+        working-directory: deploy/ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault-pass
+          chmod 600 /tmp/vault-pass
+          ansible-playbook \
+            -i inventory/hosts.yml \
+            playbooks/deploy-brix-pc.yml \
+            --vault-password-file /tmp/vault-pass \
+            -e "deploy_image_tag=${{ steps.tag.outputs.deploy_tag }}" \
+            -e "brix_pc_host=${{ secrets.BRIX_PC_HOST }}" \
+            -e "brix_pc_user=${{ secrets.BRIX_PC_USER }}"
+          rm -f /tmp/vault-pass

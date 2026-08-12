@@ -10,8 +10,8 @@ Internet -> nginx (host, :443)
               ├─ /health -> localhost:3071
               └─ /*      -> localhost:3070 (Next.js frontend)
 
-GitLab CI (SER9):
-  test → docker build/push → gitlab.local:5050/.../backend|frontend:<sha>
+CI pipeline:
+  test → docker build/push → <registry>/.../backend|frontend:<sha>
 
 brix-pc:
   decrypt ENC(.env) → .env.runtime
@@ -53,7 +53,7 @@ openssl rand -hex 16   # POSTGRES_PASSWORD / MINIO_ROOT_PASSWORD
 Registry login (если CI не передаёт job token):
 
 ```bash
-docker login gitlab.local:5050
+docker login <registry>
 # Deploy Token с read_registry
 ```
 
@@ -69,8 +69,8 @@ Push/merge в `stable-release` → pipeline:
 
 ```bash
 cd ~/service/lessons-portal
-export BACKEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/backend:stable-release
-export FRONTEND_IMAGE=gitlab.local:5050/yurii.samohvalov/lesson-portal/frontend:stable-release
+export BACKEND_IMAGE=<registry>/backend:stable-release
+export FRONTEND_IMAGE=<registry>/frontend:stable-release
 ./deploy/dockhand-deploy.sh
 # или
 ./deploy/deploy-brix-pc.sh lessons.samoh.ru admin@samoh.ru

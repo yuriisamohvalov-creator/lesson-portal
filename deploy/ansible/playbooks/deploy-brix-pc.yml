@@ -1,0 +1,10 @@
+---
+- name: Deploy production stack on brix-pc
+  hosts: brix_pc
+  gather_facts: true
+  vars:
+    # Default image tag to deploy; override with --extra-vars deploy_image_tag=stable-release
+    deploy_image_tag: "{{ git_commit_short_sha }}"
+  roles:
+    - common
+    - deploy_brix_pc

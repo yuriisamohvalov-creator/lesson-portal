@@ -1,0 +1,102 @@
+---
+- name: Ensure local env file exists
+  ansible.builtin.stat:
+    path: "{{ local_env_file }}"
+  register: local_env_stat
+  failed_when: not local_env_stat.stat.exists
+
+- name: Ensure local deploy directory exists
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Sync project sources to local deploy directory
+  ansible.builtin.command: >
+    rsync -az --delete
+    --exclude node_modules
+    --exclude .next
+    --exclude .git
+    --exclude backend/node_modules
+    --exclude frontend/node_modules
+    --exclude .env
+    {{ project_root_on_control }}/
+    {{ deploy_dir }}/
+  changed_when: true
+
+- name: Copy local env file
+  ansible.builtin.copy:
+    src: "{{ local_env_file }}"
+    dest: "{{ deploy_dir }}/.env"
+    mode: "0600"
+
+- name: Install backend dependencies
+  ansible.builtin.command: npm ci --prefer-offline --no-audit --no-fund
+  args:
+    chdir: "{{ deploy_dir }}/backend"
+  changed_when: true
+
+- name: Generate Prisma client for backend
+  ansible.builtin.command: npx prisma generate
+  args:
+    chdir: "{{ deploy_dir }}/backend"
+  changed_when: true
+
+- name: Install frontend dependencies
+  ansible.builtin.command: npm ci --prefer-offline --no-audit --no-fund
+  args:
+    chdir: "{{ deploy_dir }}/frontend"
+  changed_when: true
+
+- name: Build dev containers
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    build
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+
+- name: Start dev stack
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    up -d --force-recreate
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+
+- name: Wait for backend health
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ local_backend_port }}/health"
+    status_code: 200
+  register: backend_health
+  until: backend_health.status == 200
+  retries: 40
+  delay: 3
+
+- name: Apply database migrations
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    exec -T backend npx prisma migrate deploy
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+
+- name: Show dev stack status
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_dev }}
+    --env-file .env
+    ps
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: false

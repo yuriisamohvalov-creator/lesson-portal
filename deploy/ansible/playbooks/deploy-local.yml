@@ -1,0 +1,8 @@
+---
+- name: Deploy local development stack
+  hosts: local
+  connection: local
+  gather_facts: true
+  roles:
+    - common
+    - deploy_local

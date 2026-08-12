@@ -96,7 +96,7 @@
 
 ### 6.7 CI/CD
 
-Создать `.github/workflows/android.yml` (или GitLab CI `.gitlab-ci.yml`):
+Создать `.github/workflows/android.yml`:
 
 ```yaml
 name: Android CI
