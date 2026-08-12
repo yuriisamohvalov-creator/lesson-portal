@@ -1,0 +1,98 @@
+---
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+  become: true
+
+- name: Install certbot
+  ansible.builtin.apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+  become: true
+
+- name: Ensure certbot webroot directory exists
+  ansible.builtin.file:
+    path: /var/www/certbot
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Check if TLS certificate already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+  register: tls_cert
+
+- name: Deploy temporary HTTP-only nginx config for certbot
+  ansible.builtin.template:
+    src: certbot-http.conf.j2
+    dest: /etc/nginx/sites-available/lessons-portal
+    mode: "0644"
+  become: true
+  when: not tls_cert.stat.exists
+  notify: Reload nginx
+
+- name: Enable lessons-portal site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/lessons-portal
+    dest: /etc/nginx/sites-enabled/lessons-portal
+    state: link
+  become: true
+  notify: Reload nginx
+
+- name: Ensure default site is disabled
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+  notify: Reload nginx
+
+- name: Validate nginx configuration
+  ansible.builtin.command: nginx -t
+  become: true
+  changed_when: false
+
+- name: Reload nginx after temporary config
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  become: true
+  when: not tls_cert.stat.exists
+
+- name: Obtain or renew TLS certificate with certbot
+  ansible.builtin.command: >
+    certbot certonly --webroot
+    -w /var/www/certbot
+    -d {{ domain }}
+    --email {{ certbot_email }}
+    --agree-tos
+    --no-eff-email
+    --non-interactive
+  become: true
+  when: not tls_cert.stat.exists
+  changed_when: true
+
+- name: Deploy production nginx config
+  ansible.builtin.template:
+    src: portal.conf.j2
+    dest: /etc/nginx/sites-available/lessons-portal
+    mode: "0644"
+  become: true
+  notify: Reload nginx
+
+- name: Validate final nginx configuration
+  ansible.builtin.command: nginx -t
+  become: true
+  changed_when: false
+
+- name: Ensure nginx is running
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  become: true

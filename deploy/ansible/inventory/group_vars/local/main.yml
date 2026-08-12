@@ -1,0 +1,11 @@
+---
+# Local development stack (replaces deploy/gitlab-local-deploy.sh)
+ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+deploy_dir: "{{ local_deploy_dir | default('~/service/lessons-portal-local') }}"
+local_env_file: "{{ project_root_on_control }}/.env"
+
+next_public_api_url_local: "http://localhost:3001"
+
+# Reset test user passwords to testpass123 after migrations
+reset_test_passwords: true

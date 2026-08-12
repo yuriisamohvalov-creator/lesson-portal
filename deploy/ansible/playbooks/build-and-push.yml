@@ -1,0 +1,7 @@
+---
+- name: Build and push backend/frontend images to GHCR
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  roles:
+    - build_images

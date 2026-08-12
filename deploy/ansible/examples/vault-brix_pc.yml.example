@@ -1,0 +1,17 @@
+---
+# Copy to vault.yml and encrypt with:
+#   ansible-vault encrypt deploy/ansible/inventory/group_vars/brix_pc/vault.yml
+#
+# Required variables:
+#   vault_ghcr_token          — GitHub PAT with read:packages + write:packages
+#   vault_secrets_master_key  — contents of ~/.config/lessons-portal/master.key
+#
+# Optional:
+#   vault_brix_pc_ssh_private_key — full private key for SSH if not using ssh-agent
+
+vault_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+vault_secrets_master_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# vault_brix_pc_ssh_private_key: |
+#   -----BEGIN OPENSSH PRIVATE KEY-----
+#   ...
+#   -----END OPENSSH PRIVATE KEY-----

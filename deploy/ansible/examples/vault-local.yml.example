@@ -1,0 +1,8 @@
+---
+# Copy to vault.yml and encrypt with:
+#   ansible-vault encrypt deploy/ansible/inventory/group_vars/local/vault.yml
+#
+# Local dev usually does not need a registry token unless pulling private images.
+# vault_ghcr_token is optional here.
+
+# vault_ghcr_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

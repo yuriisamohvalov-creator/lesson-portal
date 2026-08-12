@@ -1,0 +1,106 @@
+---
+- name: Compute image tags
+  ansible.builtin.set_fact:
+    backend_repo: "{{ backend_image_name }}"
+    frontend_repo: "{{ frontend_image_name }}"
+    image_sha: "{{ git_commit_sha }}"
+    image_short_sha: "{{ git_commit_short_sha }}"
+    image_movable: "{{ image_movable_tag }}"
+
+- name: Fail on unknown commit SHA
+  ansible.builtin.fail:
+    msg: "Could not determine git commit SHA. Run from a git repository."
+  when: image_sha == 'unknown'
+
+- name: Ensure Prisma engines staging directory exists
+  ansible.builtin.file:
+    path: "{{ project_root_on_control }}/backend/.ci-prisma-engines"
+    state: directory
+    mode: "0755"
+
+- name: Search for local Prisma engines
+  ansible.builtin.find:
+    paths:
+      - "{{ project_root_on_control }}/backend/node_modules/prisma/node_modules/@prisma/engines"
+      - "{{ project_root_on_control }}/backend/node_modules/@prisma/engines"
+      - "{{ lookup('env', 'HOME') }}/.cache/prisma"
+    patterns:
+      - "libquery_engine-debian-openssl-3.0.x.so.node"
+      - "schema-engine-debian-openssl-3.0.x"
+    recurse: false
+  register: prisma_engines
+
+- name: Fail if no Prisma engines found
+  ansible.builtin.fail:
+    msg: |
+      No local Prisma engines found. Run `npx prisma generate` first,
+      or cache engines in ~/.cache/prisma.
+  when: prisma_engines.files | length < 2
+
+- name: Stage Prisma engines
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "{{ project_root_on_control }}/backend/.ci-prisma-engines/{{ item.path | basename }}"
+    mode: "0644"
+  loop: "{{ prisma_engines.files }}"
+
+- name: Log in to GitHub Container Registry
+  ansible.builtin.command: >
+    docker login {{ ghcr_registry }}
+    -u {{ ghcr_user }}
+    --password-stdin
+  args:
+    stdin: "{{ vault_ghcr_token }}"
+  changed_when: true
+  no_log: true
+
+- name: Build backend image
+  ansible.builtin.command: >
+    docker build
+    --network=host
+    --target runner
+    --build-arg NPM_REGISTRY={{ npm_registry }}
+    -t {{ backend_repo }}:{{ image_short_sha }}
+    -t {{ backend_repo }}:{{ image_sha }}
+    -t {{ backend_repo }}:{{ image_movable }}
+    -f {{ project_root_on_control }}/backend/Dockerfile
+    {{ project_root_on_control }}/backend
+  changed_when: true
+
+- name: Build frontend image
+  ansible.builtin.command: >
+    docker build
+    --network=host
+    --target runner
+    --build-arg NPM_REGISTRY={{ npm_registry }}
+    --build-arg NEXT_PUBLIC_API_URL={{ next_public_api_url_prod }}
+    --build-arg NEXT_PUBLIC_MAX_VIDEO_SIZE_MB={{ max_video_size_mb | default(5000) }}
+    -t {{ frontend_repo }}:{{ image_short_sha }}
+    -t {{ frontend_repo }}:{{ image_sha }}
+    -t {{ frontend_repo }}:{{ image_movable }}
+    -f {{ project_root_on_control }}/frontend/Dockerfile
+    {{ project_root_on_control }}/frontend
+  changed_when: true
+
+- name: Push backend images
+  ansible.builtin.command: "docker push {{ backend_repo }}:{{ item }}"
+  loop:
+    - "{{ image_short_sha }}"
+    - "{{ image_sha }}"
+    - "{{ image_movable }}"
+  changed_when: true
+
+- name: Push frontend images
+  ansible.builtin.command: "docker push {{ frontend_repo }}:{{ item }}"
+  loop:
+    - "{{ image_short_sha }}"
+    - "{{ image_sha }}"
+    - "{{ image_movable }}"
+  changed_when: true
+
+- name: Display pushed images
+  ansible.builtin.debug:
+    msg:
+      - "Backend: {{ backend_repo }}:{{ image_short_sha }}"
+      - "Frontend: {{ frontend_repo }}:{{ image_short_sha }}"
+      - "Movable tag: {{ image_movable }}"

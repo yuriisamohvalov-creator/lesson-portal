@@ -1,0 +1,7 @@
+---
+- name: Configure nginx and TLS on brix-pc
+  hosts: brix_pc
+  gather_facts: true
+  become: true
+  roles:
+    - nginx

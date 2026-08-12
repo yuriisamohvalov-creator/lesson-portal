@@ -1,0 +1,22 @@
+---
+# Production stack on brix-pc (replaces build:images + deploy:prod from GitLab CI)
+brix_pc_host: "192.168.150.90"
+brix_pc_user: "ysamohvalov"
+deploy_dir: "/home/ysamohvalov/service/lessons-portal"
+domain: "lessons.samoh.ru"
+
+backend_port: 3071
+frontend_port: 3070
+minio_port: 3072
+
+next_public_api_url_prod: "https://{{ domain }}"
+certbot_email: "admin@{{ domain }}"
+minio_bucket: "lessons-videos"
+
+# Secrets master key for deploy/secrets.sh on the target.
+# Override via vault or extra-vars; do NOT commit plaintext.
+secrets_master_key_file: "{{ ansible_env.HOME }}/.config/lessons-portal/master.key"
+
+# Optional: docker login on brix-pc using CI-style credentials.
+# If empty, brix-pc must already be logged into ghcr.io or images must be public.
+ghcr_user: "{{ lookup('env', 'GITHUB_ACTOR') | default(ghcr_owner, true) }}"
