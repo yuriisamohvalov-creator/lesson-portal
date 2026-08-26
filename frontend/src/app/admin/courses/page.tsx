@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNav } from '@/components/AdminNav';
+import { revalidateCourses } from './actions';
 
 export default function AdminCoursesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -47,12 +48,14 @@ export default function AdminCoursesPage() {
     setName('');
     setSlug('');
     setDescription('');
+    await revalidateCourses();
     load();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Удалить курс?')) return;
     await apiFetch(`/courses/${id}`, { method: 'DELETE' });
+    await revalidateCourses();
     load();
   };
 
@@ -61,6 +64,7 @@ export default function AdminCoursesPage() {
       method: 'PATCH',
       body: { status: course.status === 'published' ? 'draft' : 'published' },
     });
+    await revalidateCourses(course.id);
     load();
   };
 
