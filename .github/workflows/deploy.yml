@@ -178,7 +178,8 @@ jobs:
 
   deploy-brix-pc:
     needs: build-images
-    runs-on: ubuntu-latest
+    # Private brix-pc (LAN); GitHub-hosted runners cannot reach it — use local self-hosted runner.
+    runs-on: [self-hosted, linux, lessons-portal-deploy]
     if: github.ref == 'refs/heads/stable-release' || startsWith(github.ref, 'refs/tags/')
     environment:
       name: production

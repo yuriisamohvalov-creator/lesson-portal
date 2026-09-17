@@ -123,7 +123,7 @@ The repository includes `.github/workflows/deploy.yml` that automates the same s
 
 - **Test** backend and frontend on every PR/push.
 - **Build and push** images on `stable-release` branch and tags.
-- **Deploy** to `brix-pc` via Ansible after images are pushed.
+- **Deploy** to `brix-pc` via Ansible after images are pushed (**self-hosted** runner with label `lessons-portal-deploy` on a host in the LAN — see [deploy/github-actions-runner/README.md](../github-actions-runner/README.md)).
 
 Required GitHub repository secrets:
 
