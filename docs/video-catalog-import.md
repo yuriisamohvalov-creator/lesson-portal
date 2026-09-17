@@ -56,7 +56,8 @@ VIDEO_CATALOG_IMPORT_ROOTS=/data/lessons-import:/mnt/plex/lessons
 (переменные `VIDEO_CATALOG_IMPORT_HOST_PATH`, `VIDEO_CATALOG_IMPORT_CONTAINER_PATH`,
 `VIDEO_CATALOG_IMPORT_ROOTS`). При деплое Ansible role `deploy_brix_pc` прописывает их в
 `.env.runtime` из `inventory/group_vars/brix_pc/main.yml` (по умолчанию
-`/home/ysamohvalov/brix-pc/6tb/plex/lessons` → `/import/lessons:ro`).
+`/home/ysamohvalov/brix-pc/6tb/plex/lessons` → `/app/6tb/lessons-portal/import:ro`,
+ROOTS=`/app/6tb/lessons-portal/import`).
 
 ## Отличия от импорта «лук»
 

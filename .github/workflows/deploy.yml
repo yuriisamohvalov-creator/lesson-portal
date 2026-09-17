@@ -230,5 +230,6 @@ jobs:
             --vault-password-file /tmp/vault-pass \
             -e "deploy_image_tag=${{ steps.tag.outputs.deploy_tag }}" \
             -e "brix_pc_host=${{ secrets.BRIX_PC_HOST }}" \
-            -e "brix_pc_user=${{ secrets.BRIX_PC_USER }}"
+            -e "brix_pc_user=${{ secrets.BRIX_PC_USER }}" \
+            -e "vault_ghcr_token=${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}"
           rm -f /tmp/vault-pass
