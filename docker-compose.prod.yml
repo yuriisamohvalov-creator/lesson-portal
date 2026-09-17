@@ -23,9 +23,9 @@ services:
     environment:
       NODE_ENV: production
       FRONTEND_URL: ${FRONTEND_URL:-https://lessons.samoh.ru}
-      VIDEO_CATALOG_IMPORT_ROOTS: ${VIDEO_CATALOG_IMPORT_ROOTS:-/import/lessons}
+      VIDEO_CATALOG_IMPORT_ROOTS: ${VIDEO_CATALOG_IMPORT_ROOTS:-/app/6tb/lessons-portal/import}
     volumes:
-      - ${VIDEO_CATALOG_IMPORT_HOST_PATH:?VIDEO_CATALOG_IMPORT_HOST_PATH must be set}:${VIDEO_CATALOG_IMPORT_CONTAINER_PATH:-/import/lessons}:ro
+      - ${VIDEO_CATALOG_IMPORT_HOST_PATH:?VIDEO_CATALOG_IMPORT_HOST_PATH must be set}:${VIDEO_CATALOG_IMPORT_CONTAINER_PATH:-/app/6tb/lessons-portal/import}:ro
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3071}:3001"
 
