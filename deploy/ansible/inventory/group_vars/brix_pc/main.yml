@@ -13,6 +13,11 @@ next_public_api_url_prod: "https://{{ domain }}"
 certbot_email: "admin@{{ domain }}"
 minio_bucket: "lessons-videos"
 
+# Admin video catalog import: host path on brix-pc → read-only mount in backend container
+video_catalog_import_host_path: "/home/ysamohvalov/brix-pc/6tb/plex/lessons"
+video_catalog_import_container_path: "/import/lessons"
+video_catalog_import_roots: "/import/lessons"
+
 # Secrets master key for deploy/secrets.sh on the target.
 # Override via vault or extra-vars; do NOT commit plaintext.
 secrets_master_key_file: "{{ ansible_facts['env']['HOME'] }}/.config/lessons-portal/master.key"
