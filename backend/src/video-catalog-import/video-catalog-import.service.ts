@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createReadStream } from 'fs';
-import { readdir, stat } from 'fs/promises';
+import { readdir, stat, unlink } from 'fs/promises';
 import { basename, extname, join, relative, resolve, sep } from 'path';
 import { randomUUID } from 'crypto';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
@@ -406,6 +406,8 @@ export class VideoCatalogImportService {
           });
         }
 
+        await this.removeSourceFileAfterSuccessfulImport(file.path);
+
         item.articleId = article.id;
         item.videoId = video.id;
       } catch (err) {
@@ -466,5 +468,29 @@ export class VideoCatalogImportService {
         processStatus: 'ready',
       },
     });
+  }
+
+  /** Deletes local catalog file only after full per-file import success. */
+  private async removeSourceFileAfterSuccessfulImport(localPath: string): Promise<void> {
+    const safePath = this.resolveAllowedPath(localPath);
+    const ext = extname(safePath).toLowerCase();
+    if (!VIDEO_EXT.has(ext)) {
+      this.logger.warn(`Skip delete: not a catalog video file ${safePath}`);
+      return;
+    }
+    try {
+      const fileStat = await stat(safePath);
+      if (!fileStat.isFile()) {
+        return;
+      }
+      await unlink(safePath);
+      this.logger.log(`Removed imported source file ${safePath}`);
+    } catch (err) {
+      this.logger.warn(
+        `Could not remove source file ${safePath}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 }
