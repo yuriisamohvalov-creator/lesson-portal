@@ -8,6 +8,9 @@ VAULT_FILE="$ROOT/deploy/ansible/inventory/group_vars/all/vault.yml"
 VAULT_PASS_FILE="${ANSIBLE_VAULT_PASSWORD_FILE:-$HOME/.config/lessons-portal/ansible-vault-pass}"
 REPO="${GITHUB_REPOSITORY:-yuriisamohvalov-creator/lesson-portal}"
 
+# pip/ansible installed during self-hosted runner jobs may point at runner Python (broken on host shell).
+ANSIBLE_VAULT_BIN="${ANSIBLE_VAULT_BIN:-/usr/bin/python3 -m ansible.cli.vault}"
+
 if [[ -z "${GHCR_PAT:-}" ]]; then
   echo "Set GHCR_PAT to a classic PAT with read:packages and write:packages." >&2
   exit 1
@@ -22,10 +25,10 @@ TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
 if [[ -f "$VAULT_FILE" ]]; then
-  ansible-vault view "$VAULT_FILE" --vault-password-file "$VAULT_PASS_FILE" >"$TMP" 2>/dev/null || true
+  ${ANSIBLE_VAULT_BIN} view "$VAULT_FILE" --vault-password-file "$VAULT_PASS_FILE" >"$TMP" 2>/dev/null || true
 fi
 
-python3 - "$TMP" <<'PY'
+/usr/bin/python3 - "$TMP" <<'PY'
 import os, sys
 path = sys.argv[1]
 lines = []
@@ -40,11 +43,12 @@ for line in lines:
         k, _, v = line.partition(":")
         out[k.strip()] = v.strip().strip('"').strip("'")
 out["vault_ghcr_token"] = os.environ["GHCR_PAT"]
-for k, v in out.items():
-    print(f'{k}: "{v}"')
+with open(path, "w") as f:
+    for k, v in out.items():
+        f.write(f'{k}: "{v}"\n')
 PY
 
-ansible-vault encrypt --encrypt-vault-id default --vault-password-file "$VAULT_PASS_FILE" --output "$VAULT_FILE" "$TMP"
+${ANSIBLE_VAULT_BIN} encrypt --encrypt-vault-id default --vault-password-file "$VAULT_PASS_FILE" --output "$VAULT_FILE" "$TMP"
 
 gh secret set GHCR_TOKEN -R "$REPO" --body "$GHCR_PAT"
 
