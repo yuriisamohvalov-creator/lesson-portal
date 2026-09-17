@@ -40,6 +40,7 @@
 - Заголовок статьи — из имени файла (без расширения, `_` → пробел).
 - Slug — транслитерация латиницей + суффикс при коллизии (как у обычных статей).
 - Видео: `PutObject` из локального файла, `processStatus: ready`, постер через `VideoThumbnailService`.
+- После успешной обработки файла (включая публикацию и добавление в курс, если заданы) исходный MP4/WebM **удаляется** с диска каталога; путь снова проверяется по whitelist корней.
 - Публикация: `PUBLISHED` + запись в `moderation_logs` (`APPROVED`, комментарий об auto-import).
 - Задачи хранятся **в памати процесса** (после рестарта backend теряются; для длинных каталогов перезапускать backend во время импорта не стоит).
 
@@ -56,8 +57,8 @@ VIDEO_CATALOG_IMPORT_ROOTS=/data/lessons-import:/mnt/plex/lessons
 (переменные `VIDEO_CATALOG_IMPORT_HOST_PATH`, `VIDEO_CATALOG_IMPORT_CONTAINER_PATH`,
 `VIDEO_CATALOG_IMPORT_ROOTS`). При деплое Ansible role `deploy_brix_pc` прописывает их в
 `.env.runtime` из `inventory/group_vars/brix_pc/main.yml` (по умолчанию
-`/home/ysamohvalov/brix-pc/6tb/plex/lessons` → `/app/6tb/lessons-portal/import:ro`,
-ROOTS=`/app/6tb/lessons-portal/import`).
+хост `/app/6tb/lessons-portal/import` → контейнер `/app/6tb/lessons-portal/import:ro`,
+`VIDEO_CATALOG_IMPORT_ROOTS=/app/6tb/lessons-portal/import`).
 
 ## Отличия от импорта «лук»
 
@@ -65,13 +66,13 @@ ROOTS=`/app/6tb/lessons-portal/import`).
 |----------------------|--------|
 | Жёсткий путь и manifest курсов | Любой каталог под whitelist |
 | Фиксированные title/порядок из плана | Title из имени файла, порядок — сортировка путей |
-| SHA-256 сверка и удаление исходников | Не удаляет исходные файлы (безопаснее; удаление — отдельная ops-задача) |
+| SHA-256 сверка и удаление исходников | После успешного импорта файла (статья + MinIO + постер + публикация/курс) исходный MP4/WebM удаляется с диска; при ошибке файл остаётся |
 | Отдельные прогоны по 4 курсам | Один UI: новый или существующий курс |
 
 ## Дальнейшие улучшения (не в MVP)
 
 - Персистентные jobs (Redis/БД) и resume после рестарта.
-- Опциональная сверка SHA-256 и удаление исходника после успеха.
+- Опциональная сверка SHA-256 перед удалением исходника.
 - Manifest JSON в каталоге (переопределение title/order/slug).
 - Rate limit / очередь с одним активным импортом на инстанс.
 
