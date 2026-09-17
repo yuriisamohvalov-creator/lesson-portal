@@ -43,7 +43,7 @@ Classic PAT владельца `yuriisamohvalov-creator`:
    ./deploy/ansible/scripts/sync-ghcr-token.sh
    ```
 
-   Скрипт пишет `vault_ghcr_token` в `deploy/ansible/inventory/group_vars/all/vault.yml` (ansible-vault) и `GHCR_TOKEN` в GitHub Actions secrets.
+   Скрипт пишет `vault_ghcr_token` в `deploy/ansible/inventory/group_vars/all/vault.yml` (ansible-vault) и `GHCR_TOKEN` в GitHub Actions secrets. Использует `/usr/bin/python3 -m ansible.cli.vault`, чтобы не ломаться, если `ansible-vault` в PATH с shebang от Python self-hosted runner.
 
 3. Проверка локально:
 
