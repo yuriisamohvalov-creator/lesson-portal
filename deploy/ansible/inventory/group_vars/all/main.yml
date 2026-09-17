@@ -12,6 +12,9 @@ ghcr_prefix: "{{ ghcr_registry }}/{{ ghcr_owner }}/{{ ghcr_repo }}"
 backend_image_name: "{{ ghcr_prefix }}-backend"
 frontend_image_name: "{{ ghcr_prefix }}-frontend"
 
+# Docker login user for GHCR; used both locally and on brix-pc
+ghcr_user: "{{ lookup('env', 'GITHUB_ACTOR') | default(ghcr_owner, true) }}"
+
 # Image tags are computed at runtime; override with --extra-vars.
 git_commit_sha: "{{ lookup('pipe', 'git rev-parse HEAD 2>/dev/null || echo unknown') }}"
 git_commit_short_sha: "{{ git_commit_sha[:8] }}"
@@ -29,8 +32,13 @@ compose_base: "docker-compose.yml"
 compose_dev: "docker-compose.override.yml"
 compose_prod: "docker-compose.prod.yml"
 
-# NPM cache / registry used during image builds
-npm_registry: "{{ lookup('env', 'NPM_REGISTRY') | default('https://registry.npmjs.org/', true) }}"
+# NPM cache / registry used during image builds.
+# Local Verdaccio cache is available on localhost:4873 to avoid direct npmjs timeouts.
+npm_registry: "{{ lookup('env', 'NPM_REGISTRY') | default('http://localhost:4873/', true) }}"
+
+# Production domain / URL used when building images locally
+domain: "lessons.samoh.ru"
+next_public_api_url_prod: "https://{{ domain }}"
 
 # Ports
 local_backend_port: 3001

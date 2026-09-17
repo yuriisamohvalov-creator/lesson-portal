@@ -84,6 +84,18 @@
     create: true
     mode: "0600"
 
+- name: Configure video catalog import mount in .env.runtime
+  ansible.builtin.lineinfile:
+    path: "{{ deploy_dir }}/.env.runtime"
+    regexp: "^{{ item.key }}=.*"
+    line: "{{ item.key }}={{ item.value }}"
+    create: true
+    mode: "0600"
+  loop:
+    - { key: "VIDEO_CATALOG_IMPORT_ROOTS", value: "{{ video_catalog_import_roots }}" }
+    - { key: "VIDEO_CATALOG_IMPORT_HOST_PATH", value: "{{ video_catalog_import_host_path }}" }
+    - { key: "VIDEO_CATALOG_IMPORT_CONTAINER_PATH", value: "{{ video_catalog_import_container_path }}" }
+
 - name: Log in to GitHub Container Registry on brix-pc
   ansible.builtin.command: >
     docker login {{ ghcr_registry }}

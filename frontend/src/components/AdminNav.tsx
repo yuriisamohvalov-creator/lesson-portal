@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/admin/articles', label: 'Статьи' },
   { href: '/admin/categories', label: 'Категории' },
   { href: '/admin/courses', label: 'Курсы' },
+  { href: '/admin/video-import', label: 'Импорт видео' },
   { href: '/admin/users', label: 'Пользователи' },
 ];
 

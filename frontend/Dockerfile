@@ -19,7 +19,8 @@ ENV NODE_OPTIONS=--max-old-space-size=2048
 ARG NPM_REGISTRY=https://registry.npmjs.org/
 ENV npm_config_registry=$NPM_REGISTRY
 COPY package*.json ./
-RUN npm ci --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
 COPY . .
 RUN mkdir -p public
 RUN npm run build

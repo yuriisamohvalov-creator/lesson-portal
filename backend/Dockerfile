@@ -20,7 +20,8 @@ ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
 COPY package*.json ./
 # ignore-scripts avoids hung @prisma/engines postinstall; rebuild natives + generate explicitly
-RUN npm ci --no-audit --no-fund --ignore-scripts \
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund --ignore-scripts \
     && npm rebuild argon2 \
     && npm install --no-save --no-audit --no-fund prisma@5.22.0
 COPY . .
@@ -44,7 +45,8 @@ COPY package*.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY .ci-prisma-engines ./.ci-prisma-engines
-RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts \
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --no-audit --no-fund --ignore-scripts \
     && npm rebuild argon2 \
     && npm install --no-save --no-audit --no-fund prisma dotenv \
     && mkdir -p node_modules/@prisma/engines node_modules/prisma/node_modules/@prisma/engines \
