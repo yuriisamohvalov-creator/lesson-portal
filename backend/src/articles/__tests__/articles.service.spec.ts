@@ -10,7 +10,10 @@ import { CacheService } from '../../cache/cache.service';
 describe('ArticlesService', () => {
   let service: ArticlesService;
   let prisma: any;
-  let videosService: { attachStreamUrls: jest.Mock };
+  let videosService: {
+    attachStreamUrls: jest.Mock;
+    deleteStorageForArticle: jest.Mock;
+  };
   let cacheService: {
     get: jest.Mock;
     set: jest.Mock;
@@ -47,6 +50,7 @@ describe('ArticlesService', () => {
 
     videosService = {
       attachStreamUrls: jest.fn(async (videos) => videos),
+      deleteStorageForArticle: jest.fn(async () => undefined),
     };
 
     cacheService = {
@@ -206,17 +210,33 @@ describe('ArticlesService', () => {
       expect(prisma.video.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
       expect(prisma.courseArticle.deleteMany).toHaveBeenCalledWith({ where: { articleId: '1' } });
       expect(prisma.article.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(videosService.deleteStorageForArticle).toHaveBeenCalledWith('1');
     });
 
-    it('should throw ConflictException for non-deletable status', async () => {
+    it('should allow author to delete published article', async () => {
       prisma.article.findUnique.mockResolvedValue({
         id: '1',
         authorId: 'userId',
         status: ArticleStatus.PUBLISHED,
       });
-      await expect(
-        service.remove('1', 'userId', UserRole.USER),
-      ).rejects.toThrow(ConflictException);
+      prisma.$transaction = jest.fn(async (ops) => Promise.all(ops));
+
+      await service.remove('1', 'userId', UserRole.USER);
+
+      expect(prisma.article.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+    });
+
+    it('should allow admin to delete another users article', async () => {
+      prisma.article.findUnique.mockResolvedValue({
+        id: '1',
+        authorId: 'other-user',
+        status: ArticleStatus.PUBLISHED,
+      });
+      prisma.$transaction = jest.fn(async (ops) => Promise.all(ops));
+
+      await service.remove('1', 'adminId', UserRole.ADMIN);
+
+      expect(prisma.article.delete).toHaveBeenCalledWith({ where: { id: '1' } });
     });
   });
 });
