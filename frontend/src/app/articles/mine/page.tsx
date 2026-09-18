@@ -111,16 +111,14 @@ export default function MyArticlesPage() {
                           {article.status === 'REJECTED' ? 'Отправить заново' : 'Отправить на модерацию'}
                         </button>
                       )}
-                      {(article.status === 'DRAFT' || article.status === 'REJECTED') && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(article.id)}
-                          disabled={deletingId === article.id}
-                          className="btn btn-danger text-xs"
-                        >
-                          {deletingId === article.id ? '...' : 'Удалить'}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(article.id)}
+                        disabled={deletingId === article.id}
+                        className="btn btn-danger text-xs"
+                      >
+                        {deletingId === article.id ? '...' : 'Удалить'}
+                      </button>
                     </div>
                   </td>
                 </tr>

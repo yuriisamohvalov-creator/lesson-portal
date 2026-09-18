@@ -69,17 +69,26 @@ export default function ArticlePage({ params }: { params: Promise<{ id: string }
   const isAuthor = user && article && user.id === article.authorId;
   const isStaff = user && (user.role === 'ADMIN' || user.role === 'MODERATOR');
   const canEditContent = Boolean(isAuthor || isStaff);
-  const canDelete =
-    Boolean(isAuthor || user?.role === 'ADMIN') &&
-    article &&
-    (article.status === 'DRAFT' || article.status === 'REJECTED');
+  const canDelete = Boolean(isAuthor || user?.role === 'ADMIN') && article;
 
   const handleDelete = async () => {
-    if (!confirm('Вы уверены, что хотите удалить статью?')) return;
+    if (
+      !confirm(
+        article.status === 'PUBLISHED' || article.status === 'PENDING'
+          ? 'Статья будет удалена безвозвратно вместе с видео и комментариями. Продолжить?'
+          : 'Вы уверены, что хотите удалить статью?',
+      )
+    ) {
+      return;
+    }
     setDeleting(true);
     try {
       await apiFetch(`/articles/${articleId}`, { method: 'DELETE' });
-      router.push('/articles/mine');
+      if (user?.role === 'ADMIN') {
+        router.push('/admin/articles');
+      } else {
+        router.push('/articles/mine');
+      }
     } catch (err: unknown) {
       alert(getApiErrorMessage(err, 'Ошибка удаления'));
     } finally {

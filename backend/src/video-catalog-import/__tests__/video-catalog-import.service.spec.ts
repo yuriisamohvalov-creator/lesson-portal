@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { VideoCatalogImportService } from '../video-catalog-import.service';
+import {
+  VideoCatalogImportService,
+  catalogImportSlugMatches,
+} from '../video-catalog-import.service';
 
 describe('VideoCatalogImportService', () => {
   const originalRoots = process.env.VIDEO_CATALOG_IMPORT_ROOTS;
@@ -44,5 +47,17 @@ describe('VideoCatalogImportService', () => {
     expect(service.resolveAllowedPath('/data/import/course-1')).toBe(
       '/data/import/course-1',
     );
+  });
+
+  it('catalogImportSlugMatches base slug and numbered suffix only', () => {
+    expect(catalogImportSlugMatches('openclaw-guide', 'openclaw-guide')).toBe(
+      true,
+    );
+    expect(catalogImportSlugMatches('openclaw-guide-2', 'openclaw-guide')).toBe(
+      true,
+    );
+    expect(
+      catalogImportSlugMatches('openclaw-guide-extra', 'openclaw-guide'),
+    ).toBe(false);
   });
 });
