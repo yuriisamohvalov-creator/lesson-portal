@@ -113,7 +113,7 @@
     -f {{ compose_base }}
     -f {{ compose_prod }}
     --env-file {{ deploy_dir }}/.env.runtime
-    pull
+    pull backend frontend
   args:
     chdir: "{{ deploy_dir }}"
   changed_when: true
