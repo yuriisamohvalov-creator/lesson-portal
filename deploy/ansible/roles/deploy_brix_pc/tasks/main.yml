@@ -107,6 +107,17 @@
   no_log: true
   when: vault_ghcr_token is defined and vault_ghcr_token | length > 0
 
+- name: Pull production images from registry
+  ansible.builtin.command: >
+    docker compose
+    -f {{ compose_base }}
+    -f {{ compose_prod }}
+    --env-file {{ deploy_dir }}/.env.runtime
+    pull
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: true
+
 - name: Pull and start production stack
   ansible.builtin.command: >
     docker compose

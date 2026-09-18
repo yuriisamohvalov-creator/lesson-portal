@@ -378,6 +378,8 @@ export class VideoCatalogImportService {
           });
         }
 
+        await this.removeSourceFileAfterSuccessfulImport(file.path);
+
         if (dto.publishArticles !== false) {
           await this.prisma.$transaction([
             this.prisma.article.update({
@@ -405,8 +407,6 @@ export class VideoCatalogImportService {
             order: courseOrderOffset + index + 1,
           });
         }
-
-        await this.removeSourceFileAfterSuccessfulImport(file.path);
 
         item.articleId = article.id;
         item.videoId = video.id;
