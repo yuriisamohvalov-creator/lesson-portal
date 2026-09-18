@@ -38,6 +38,8 @@ type ImportJob = {
     articleId?: string;
     videoId?: string;
     error?: string;
+    skipped?: boolean;
+    skipReason?: string;
   }>;
   error?: string;
 };
@@ -424,7 +426,7 @@ export default function AdminVideoCatalogImportPage() {
             <div style={{ maxHeight: '280px', overflow: 'auto', marginTop: '0.75rem' }}>
               {job.results.map((row) => (
                 <div key={row.filePath} style={{ fontSize: '0.875rem', marginBottom: '0.35rem' }}>
-                  {row.error ? '✗' : '✓'} {row.title}
+                  {row.error ? '✗' : row.skipped ? '↷' : '✓'} {row.title}
                   {row.articleId && (
                     <>
                       {' '}
@@ -433,6 +435,9 @@ export default function AdminVideoCatalogImportPage() {
                         статья
                       </Link>
                     </>
+                  )}
+                  {row.skipped && row.skipReason && (
+                    <span style={{ color: '#9ca3af' }}> — {row.skipReason}</span>
                   )}
                   {row.error && (
                     <span style={{ color: '#fca5a5' }}> — {row.error}</span>
