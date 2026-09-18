@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService, CACHE_KEYS } from '../cache/cache.service';
+import { ArticleStatus } from '@prisma/client';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
@@ -40,7 +41,13 @@ export class CategoriesService {
 
     const categories = await this.prisma.category.findMany({
       orderBy: { name: 'asc' },
-      include: { _count: { select: { articles: true } } },
+      include: {
+        _count: {
+          select: {
+            articles: { where: { status: ArticleStatus.PUBLISHED } },
+          },
+        },
+      },
     });
 
     await this.cache.set(CACHE_KEYS.categoriesAll, categories, 300);
@@ -50,7 +57,13 @@ export class CategoriesService {
   async findOne(id: string) {
     const category = await this.prisma.category.findUnique({
       where: { id },
-      include: { _count: { select: { articles: true } } },
+      include: {
+        _count: {
+          select: {
+            articles: { where: { status: ArticleStatus.PUBLISHED } },
+          },
+        },
+      },
     });
     if (!category) {
       throw new NotFoundException('Category not found');
