@@ -24,6 +24,12 @@ import { RunVideoCatalogImportDto } from './dto/run-video-catalog-import.dto';
 
 const VIDEO_EXT = new Set(['.mp4', '.webm']);
 
+/** Stable token stored in article content to detect re-import of the same catalog file. */
+export function catalogImportDedupMarker(relativePath: string): string {
+  const normalized = relativePath.split(sep).join('/');
+  return `catalog-import:${normalized}`;
+}
+
 /** Slug from import title matches base slug or numbered suffix (base-2, base-3). */
 export function catalogImportSlugMatches(
   articleSlug: string,
@@ -262,51 +268,39 @@ export class VideoCatalogImportService {
   }
 
   private async findExistingArticleForCatalogImport(
-    title: string,
-    fileName: string,
+    catalogRelativePath: string,
   ): Promise<{
     id: string;
     slug: string;
+    title: string;
     videos: { id: string; processStatus: string }[];
   } | null> {
-    const byTitle = await this.prisma.article.findFirst({
-      where: { title: { equals: title, mode: 'insensitive' } },
+    const marker = catalogImportDedupMarker(catalogRelativePath);
+    const byMarker = await this.prisma.article.findFirst({
+      where: { content: { contains: marker } },
       include: {
         videos: { select: { id: true, processStatus: true } },
       },
     });
-    if (byTitle) {
-      return byTitle;
+    if (byMarker) {
+      return byMarker;
     }
 
-    const byFileInContent = await this.prisma.article.findFirst({
-      where: { content: { contains: fileName } },
-      include: {
-        videos: { select: { id: true, processStatus: true } },
-      },
-    });
-    if (byFileInContent) {
-      return byFileInContent;
-    }
-
-    const baseSlug = this.generateSlug(title);
-    if (baseSlug === 'video-lesson') {
-      return null;
-    }
-
-    const slugCandidates = await this.prisma.article.findMany({
+    const normalized = catalogRelativePath.split(sep).join('/');
+    const legacySnippet = `<code>${this.escapeHtml(normalized)}</code>`;
+    const byLegacyPath = await this.prisma.article.findFirst({
       where: {
-        OR: [{ slug: baseSlug }, { slug: { startsWith: `${baseSlug}-` } }],
+        AND: [
+          { content: { contains: legacySnippet } },
+          { content: { contains: 'Видеоурок из каталога' } },
+        ],
       },
       include: {
         videos: { select: { id: true, processStatus: true } },
       },
-      take: 30,
     });
-    for (const article of slugCandidates) {
-      if (catalogImportSlugMatches(article.slug, baseSlug)) {
-        return article;
-      }
+    if (byLegacyPath) {
+      return byLegacyPath;
     }
 
     return null;
@@ -419,13 +413,11 @@ export class VideoCatalogImportService {
       job.results.push(item);
 
       try {
-        const existing = await this.findExistingArticleForCatalogImport(
-          title,
-          file.name,
-        );
+        const rel = relative(rootForRelative, file.path);
+        const existing = await this.findExistingArticleForCatalogImport(rel);
         if (existing) {
           item.skipped = true;
-          item.skipReason = `Статья уже есть (${existing.slug})`;
+          item.skipReason = `Статья уже импортирована: «${existing.title}» (${existing.slug})`;
           item.articleId = existing.id;
           const readyVideo = existing.videos.find(
             (v) => v.processStatus === 'ready',
@@ -451,8 +443,7 @@ export class VideoCatalogImportService {
         }
 
         const slug = await this.ensureUniqueSlug(this.generateSlug(title));
-        const rel = relative(rootForRelative, file.path);
-        const content = `<p>Видеоурок из каталога <code>${this.escapeHtml(rel)}</code>.</p>`;
+        const content = `<p>${catalogImportDedupMarker(rel)}</p><p>Видеоурок из каталога <code>${this.escapeHtml(rel)}</code>.</p>`;
 
         const article = await this.prisma.article.create({
           data: {

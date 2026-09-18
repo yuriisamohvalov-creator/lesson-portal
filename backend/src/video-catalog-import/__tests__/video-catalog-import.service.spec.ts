@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
   VideoCatalogImportService,
   catalogImportSlugMatches,
+  catalogImportDedupMarker,
 } from '../video-catalog-import.service';
 
 describe('VideoCatalogImportService', () => {
@@ -46,6 +47,12 @@ describe('VideoCatalogImportService', () => {
     const service = createService();
     expect(service.resolveAllowedPath('/data/import/course-1')).toBe(
       '/data/import/course-1',
+    );
+  });
+
+  it('catalogImportDedupMarker normalizes path for dedup token', () => {
+    expect(catalogImportDedupMarker('Персонаж в Blender/урок.mp4')).toBe(
+      'catalog-import:Персонаж в Blender/урок.mp4',
     );
   });
 
