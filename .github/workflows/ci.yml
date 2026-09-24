@@ -61,7 +61,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       minio:
-        image: minio/minio
+        image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
         env:
           MINIO_ROOT_USER: minio_test
           MINIO_ROOT_PASSWORD: minio_test_password
@@ -147,7 +147,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       minio:
-        image: minio/minio
+        image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
         env:
           MINIO_ROOT_USER: minio_test
           MINIO_ROOT_PASSWORD: minio_test_password
@@ -198,7 +198,7 @@ jobs:
         run: npx prisma db seed
       - name: Initialize MinIO bucket
         run: |
-          docker run --rm --network host --entrypoint /bin/sh minio/mc -c '
+          docker run --rm --network host --entrypoint /bin/sh pgsty/mc:RELEASE.2026-09-16T00-00-00Z -c '
             mc alias set local http://127.0.0.1:9000 minio_test minio_test_password &&
             mc mb local/lessons-videos-test --ignore-existing &&
             mc anonymous set private local/lessons-videos-test
