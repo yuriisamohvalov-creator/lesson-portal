@@ -21,7 +21,7 @@ services:
           cpus: "1.0"
 
   minio:
-    image: minio/minio
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -40,7 +40,7 @@ services:
           cpus: "1.0"
 
   minio-init:
-    image: minio/mc
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on:
       minio:
         condition: service_healthy
