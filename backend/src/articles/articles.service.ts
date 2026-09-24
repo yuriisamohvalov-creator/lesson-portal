@@ -446,15 +446,11 @@ export class ArticlesService {
       throw new NotFoundException('Article not found');
     }
 
-    // Only author or admin can delete
     if (article.authorId !== userId && userRole !== UserRole.ADMIN) {
       throw new ForbiddenException('You can only delete your own articles');
     }
 
-    // Can only delete DRAFT or REJECTED
-    if (article.status !== ArticleStatus.DRAFT && article.status !== ArticleStatus.REJECTED) {
-      throw new ConflictException('Cannot delete article in current status');
-    }
+    await this.videosService.deleteStorageForArticle(id);
 
     await this.prisma.$transaction([
       this.prisma.moderationLog.deleteMany({ where: { articleId: id } }),

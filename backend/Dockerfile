@@ -18,6 +18,7 @@ ENV npm_config_registry=$NPM_REGISTRY
 ENV NODE_OPTIONS="--max-old-space-size=2048 --dns-result-order=ipv4first"
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE=1
 COPY package*.json ./
 # ignore-scripts avoids hung @prisma/engines postinstall; rebuild natives + generate explicitly
 RUN --mount=type=cache,target=/root/.npm \
@@ -30,7 +31,8 @@ RUN mkdir -p node_modules/@prisma/engines node_modules/prisma/node_modules/@pris
     && cp -a .ci-prisma-engines/. node_modules/@prisma/engines/ \
     && cp -a .ci-prisma-engines/. node_modules/prisma/node_modules/@prisma/engines/ \
     && cp -a .ci-prisma-engines/libquery_engine-debian-openssl-3.0.x.so.node node_modules/prisma/ \
-    && npx prisma generate
+    && cp -a .ci-prisma-engines/*.sha256 node_modules/prisma/node_modules/@prisma/engines/ 2>/dev/null || true \
+    && PRISMA_ENGINES_CHECKSUM_IGNORE=1 npx prisma generate
 RUN npm run build
 
 FROM node:22-slim AS runner
@@ -41,6 +43,7 @@ ENV npm_config_registry=$NPM_REGISTRY
 ENV NODE_OPTIONS="--max-old-space-size=2048 --dns-result-order=ipv4first"
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE=1
 COPY package*.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
@@ -53,7 +56,8 @@ RUN --mount=type=cache,target=/root/.npm \
     && cp -a .ci-prisma-engines/. node_modules/@prisma/engines/ \
     && cp -a .ci-prisma-engines/. node_modules/prisma/node_modules/@prisma/engines/ \
     && cp -a .ci-prisma-engines/libquery_engine-debian-openssl-3.0.x.so.node node_modules/prisma/ \
-    && npx prisma generate \
+    && cp -a .ci-prisma-engines/*.sha256 node_modules/prisma/node_modules/@prisma/engines/ 2>/dev/null || true \
+    && PRISMA_ENGINES_CHECKSUM_IGNORE=1 npx prisma generate \
     && rm -rf .ci-prisma-engines
 COPY --from=builder /app/dist ./dist
 ENV NODE_ENV=production

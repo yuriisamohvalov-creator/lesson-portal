@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNav } from '@/components/AdminNav';
 
@@ -13,6 +13,7 @@ export default function AdminArticlesPage() {
   const [data, setData] = useState<any>(null);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -30,6 +31,25 @@ export default function AdminArticlesPage() {
     }
     load();
   }, [user, authLoading, router, status]);
+
+  const handleDelete = async (id: string, title: string) => {
+    if (
+      !confirm(
+        `Удалить статью «${title}»? Видео и комментарии будут удалены безвозвратно.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await apiFetch(`/articles/${id}`, { method: 'DELETE' });
+      load();
+    } catch (err: unknown) {
+      alert(getApiErrorMessage(err, 'Ошибка удаления'));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (authLoading || loading) return <div className="text-slate-400">Загрузка...</div>;
   if (!data) return <div className="text-rose-400">Ошибка загрузки</div>;
@@ -68,6 +88,17 @@ export default function AdminArticlesPage() {
               >
                 История
               </Link>
+            )}
+            {user?.role === 'ADMIN' && (
+              <button
+                type="button"
+                className="btn btn-danger"
+                style={{ alignSelf: 'start' }}
+                disabled={deletingId === article.id}
+                onClick={() => handleDelete(article.id, article.title)}
+              >
+                {deletingId === article.id ? '...' : 'Удалить'}
+              </button>
             )}
           </div>
         </div>

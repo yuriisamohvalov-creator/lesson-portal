@@ -19,13 +19,13 @@ services:
     # Drop base `build:` so prod never compiles on brix (Compose Spec reset).
     build: !reset null
     image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be set in .env.runtime}
-    pull_policy: missing
+    pull_policy: always
     environment:
       NODE_ENV: production
       FRONTEND_URL: ${FRONTEND_URL:-https://lessons.samoh.ru}
-      VIDEO_CATALOG_IMPORT_ROOTS: ${VIDEO_CATALOG_IMPORT_ROOTS:-/import/lessons}
+      VIDEO_CATALOG_IMPORT_ROOTS: ${VIDEO_CATALOG_IMPORT_ROOTS:-/app/6tb/lessons-portal/import}
     volumes:
-      - ${VIDEO_CATALOG_IMPORT_HOST_PATH:?VIDEO_CATALOG_IMPORT_HOST_PATH must be set}:${VIDEO_CATALOG_IMPORT_CONTAINER_PATH:-/import/lessons}:ro
+      - ${VIDEO_CATALOG_IMPORT_HOST_PATH:?VIDEO_CATALOG_IMPORT_HOST_PATH must be set}:${VIDEO_CATALOG_IMPORT_CONTAINER_PATH:-/app/6tb/lessons-portal/import}:ro
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3071}:3001"
 
@@ -33,7 +33,7 @@ services:
     restart: always
     build: !reset null
     image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must be set in .env.runtime}
-    pull_policy: missing
+    pull_policy: always
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://lessons.samoh.ru}

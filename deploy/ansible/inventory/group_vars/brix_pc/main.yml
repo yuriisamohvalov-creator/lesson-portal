@@ -14,9 +14,9 @@ certbot_email: "admin@{{ domain }}"
 minio_bucket: "lessons-videos"
 
 # Admin video catalog import: host path on brix-pc → read-only mount in backend container
-video_catalog_import_host_path: "/home/ysamohvalov/brix-pc/6tb/plex/lessons"
-video_catalog_import_container_path: "/import/lessons"
-video_catalog_import_roots: "/import/lessons"
+video_catalog_import_host_path: "/app/6tb/lessons-portal/import"
+video_catalog_import_container_path: "/app/6tb/lessons-portal/import"
+video_catalog_import_roots: "/app/6tb/lessons-portal/import"
 
 # Secrets master key for deploy/secrets.sh on the target.
 # Override via vault or extra-vars; do NOT commit plaintext.

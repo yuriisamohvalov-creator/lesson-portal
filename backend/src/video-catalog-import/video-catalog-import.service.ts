@@ -1,11 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { createReadStream } from 'fs';
-import { readdir, stat } from 'fs/promises';
+import { readdir, stat, unlink } from 'fs/promises';
 import { basename, extname, join, relative, resolve, sep } from 'path';
 import { randomUUID } from 'crypto';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
@@ -22,6 +23,21 @@ import { CacheService } from '../cache/cache.service';
 import { RunVideoCatalogImportDto } from './dto/run-video-catalog-import.dto';
 
 const VIDEO_EXT = new Set(['.mp4', '.webm']);
+
+/** Slug from import title matches base slug or numbered suffix (base-2, base-3). */
+export function catalogImportSlugMatches(
+  articleSlug: string,
+  baseSlug: string,
+): boolean {
+  if (articleSlug === baseSlug) {
+    return true;
+  }
+  if (!articleSlug.startsWith(`${baseSlug}-`)) {
+    return false;
+  }
+  const suffix = articleSlug.slice(baseSlug.length + 1);
+  return suffix.length > 0 && /^\d+$/.test(suffix);
+}
 
 export type CatalogBrowseEntry = {
   name: string;
@@ -42,6 +58,8 @@ export type ImportJobItemResult = {
   articleId?: string;
   videoId?: string;
   error?: string;
+  skipped?: boolean;
+  skipReason?: string;
 };
 
 export type ImportJobState = {
@@ -243,6 +261,57 @@ export class VideoCatalogImportService {
     }
   }
 
+  private async findExistingArticleForCatalogImport(
+    title: string,
+    fileName: string,
+  ): Promise<{
+    id: string;
+    slug: string;
+    videos: { id: string; processStatus: string }[];
+  } | null> {
+    const byTitle = await this.prisma.article.findFirst({
+      where: { title: { equals: title, mode: 'insensitive' } },
+      include: {
+        videos: { select: { id: true, processStatus: true } },
+      },
+    });
+    if (byTitle) {
+      return byTitle;
+    }
+
+    const byFileInContent = await this.prisma.article.findFirst({
+      where: { content: { contains: fileName } },
+      include: {
+        videos: { select: { id: true, processStatus: true } },
+      },
+    });
+    if (byFileInContent) {
+      return byFileInContent;
+    }
+
+    const baseSlug = this.generateSlug(title);
+    if (baseSlug === 'video-lesson') {
+      return null;
+    }
+
+    const slugCandidates = await this.prisma.article.findMany({
+      where: {
+        OR: [{ slug: baseSlug }, { slug: { startsWith: `${baseSlug}-` } }],
+      },
+      include: {
+        videos: { select: { id: true, processStatus: true } },
+      },
+      take: 30,
+    });
+    for (const article of slugCandidates) {
+      if (catalogImportSlugMatches(article.slug, baseSlug)) {
+        return article;
+      }
+    }
+
+    return null;
+  }
+
   startImport(adminUserId: string, dto: RunVideoCatalogImportDto): ImportJobState {
     const jobId = randomUUID();
     const job: ImportJobState = {
@@ -350,6 +419,37 @@ export class VideoCatalogImportService {
       job.results.push(item);
 
       try {
+        const existing = await this.findExistingArticleForCatalogImport(
+          title,
+          file.name,
+        );
+        if (existing) {
+          item.skipped = true;
+          item.skipReason = `Статья уже есть (${existing.slug})`;
+          item.articleId = existing.id;
+          const readyVideo = existing.videos.find(
+            (v) => v.processStatus === 'ready',
+          );
+          if (readyVideo) {
+            item.videoId = readyVideo.id;
+            await this.removeSourceFileAfterSuccessfulImport(file.path);
+          }
+          if (courseId) {
+            try {
+              await this.coursesService.addArticle(courseId, {
+                articleId: existing.id,
+                order: courseOrderOffset + index + 1,
+              });
+            } catch (err) {
+              if (!(err instanceof ConflictException)) {
+                throw err;
+              }
+            }
+          }
+          job.processed = index + 1;
+          continue;
+        }
+
         const slug = await this.ensureUniqueSlug(this.generateSlug(title));
         const rel = relative(rootForRelative, file.path);
         const content = `<p>Видеоурок из каталога <code>${this.escapeHtml(rel)}</code>.</p>`;
@@ -377,6 +477,8 @@ export class VideoCatalogImportService {
             data: { thumbnailKey },
           });
         }
+
+        await this.removeSourceFileAfterSuccessfulImport(file.path);
 
         if (dto.publishArticles !== false) {
           await this.prisma.$transaction([
@@ -466,5 +568,29 @@ export class VideoCatalogImportService {
         processStatus: 'ready',
       },
     });
+  }
+
+  /** Deletes local catalog file only after full per-file import success. */
+  private async removeSourceFileAfterSuccessfulImport(localPath: string): Promise<void> {
+    const safePath = this.resolveAllowedPath(localPath);
+    const ext = extname(safePath).toLowerCase();
+    if (!VIDEO_EXT.has(ext)) {
+      this.logger.warn(`Skip delete: not a catalog video file ${safePath}`);
+      return;
+    }
+    try {
+      const fileStat = await stat(safePath);
+      if (!fileStat.isFile()) {
+        return;
+      }
+      await unlink(safePath);
+      this.logger.log(`Removed imported source file ${safePath}`);
+    } catch (err) {
+      this.logger.warn(
+        `Could not remove source file ${safePath}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 }

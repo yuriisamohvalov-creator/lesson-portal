@@ -301,19 +301,21 @@ export class VideosService implements OnModuleDestroy {
     return this.attachStreamUrls(videos);
   }
 
-  async remove(
-    articleId: string,
-    videoId: string,
-    userId: string,
-    userRole: UserRole,
-  ) {
-    await this.getArticleAndCheckOwnership(articleId, userId, userRole);
-
-    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
-    if (!video || video.articleId !== articleId) {
-      throw new NotFoundException('Video not found');
+  async deleteStorageForArticle(articleId: string): Promise<void> {
+    const videos = await this.prisma.video.findMany({
+      where: { articleId },
+      select: { s3Key: true, thumbnailKey: true, s3Bucket: true },
+    });
+    for (const video of videos) {
+      await this.deleteStoredObjects(video);
     }
+  }
 
+  private async deleteStoredObjects(video: {
+    s3Key: string | null;
+    thumbnailKey: string | null;
+    s3Bucket: string | null;
+  }): Promise<void> {
     if (video.s3Key) {
       try {
         await this.s3.send(
@@ -339,6 +341,22 @@ export class VideosService implements OnModuleDestroy {
         // ignore missing thumbnails
       }
     }
+  }
+
+  async remove(
+    articleId: string,
+    videoId: string,
+    userId: string,
+    userRole: UserRole,
+  ) {
+    await this.getArticleAndCheckOwnership(articleId, userId, userRole);
+
+    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+    if (!video || video.articleId !== articleId) {
+      throw new NotFoundException('Video not found');
+    }
+
+    await this.deleteStoredObjects(video);
 
     await this.prisma.video.delete({ where: { id: videoId } });
     await this.markArticleDraft(articleId);

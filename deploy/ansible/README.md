@@ -123,7 +123,7 @@ The repository includes `.github/workflows/deploy.yml` that automates the same s
 
 - **Test** backend and frontend on every PR/push.
 - **Build and push** images on `stable-release` branch and tags.
-- **Deploy** to `brix-pc` via Ansible after images are pushed.
+- **Deploy** to `brix-pc` via Ansible after images are pushed (**self-hosted** runner with label `lessons-portal-deploy` on a host in the LAN — see [deploy/github-actions-runner/README.md](../github-actions-runner/README.md)).
 
 Required GitHub repository secrets:
 
@@ -133,6 +133,9 @@ Required GitHub repository secrets:
 | `BRIX_PC_USER` | SSH user on brix-pc |
 | `BRIX_PC_SSH_PRIVATE_KEY` | SSH private key for Ansible to connect |
 | `ANSIBLE_VAULT_PASSWORD` | Password for `deploy/ansible/inventory/group_vars/brix_pc/vault.yml` |
+| `GHCR_TOKEN` | (Optional) Classic PAT with `read:packages` + `write:packages` if GHCR packages were first pushed outside Actions; see [docs/ghcr-permissions.md](../../docs/ghcr-permissions.md) |
+
+If `build-images` fails with `permission_denied: read_package`, follow [docs/ghcr-permissions.md](../../docs/ghcr-permissions.md). Quick rotate: `GHCR_PAT='ghp_…' ./deploy/ansible/scripts/sync-ghcr-token.sh`.
 
 If you prefer to deploy manually, use the playbooks above instead of the workflow.
 
