@@ -61,6 +61,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       minio:
+        # minio/minio removed from Docker Hub; pgsty/minio is a drop-in community build
         image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
         env:
           MINIO_ROOT_USER: minio_test
@@ -147,6 +148,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       minio:
+        # minio/minio removed from Docker Hub; pgsty/minio is a drop-in community build
         image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
         env:
           MINIO_ROOT_USER: minio_test
