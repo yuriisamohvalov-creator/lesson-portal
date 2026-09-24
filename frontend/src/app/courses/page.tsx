@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { CourseCard } from '@/components/ui';
 
@@ -22,6 +23,10 @@ export default async function CoursesPage({
         Ошибка загрузки
       </div>
     );
+  }
+
+  if (data.meta.totalPages > 0 && page > data.meta.totalPages) {
+    redirect(`/courses?page=${data.meta.totalPages}`);
   }
 
   return (
