@@ -127,6 +127,13 @@ test.describe.serial('Video upload', () => {
     );
     expect(uploadRes.ok()).toBeTruthy();
 
+    // Uploading a video moves the article back to DRAFT, so resubmit it
+    const submitRes = await request.post(
+      `http://localhost:3001/api/articles/${articleId}/submit`,
+      { headers: { Authorization: `Bearer ${loginJson.accessToken}` } },
+    );
+    expect(submitRes.ok()).toBeTruthy();
+
     await approveAsModerator(title);
 
     await page.goto(articlePath!);
