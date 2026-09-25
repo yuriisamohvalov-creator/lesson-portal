@@ -7,16 +7,31 @@ const COURSES_PER_PAGE = 15;
 
 export const revalidate = 60;
 
+function coursesPagePath(page: number, search: string) {
+  const params = new URLSearchParams();
+  if (search) {
+    params.set('search', search);
+  }
+  if (page > 1) {
+    params.set('page', String(page));
+  }
+  const qs = params.toString();
+  return qs ? `/courses?${qs}` : '/courses';
+}
+
 export default async function CoursesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; search?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, search: searchParam } = await searchParams;
   const page = Math.max(1, Math.floor(Number(pageParam)) || 1);
+  const search = (searchParam ?? '').trim();
   let data;
   try {
-    data = await apiFetch<any>(`/courses?page=${page}&limit=${COURSES_PER_PAGE}`);
+    const limit = COURSES_PER_PAGE;
+    const searchQs = search ? `&search=${encodeURIComponent(search)}` : '';
+    data = await apiFetch<any>(`/courses?page=${page}&limit=${limit}${searchQs}`);
   } catch {
     return (
       <div className="rounded-2xl border border-rose-500/30 bg-rose-950/40 p-6 text-rose-300">
@@ -26,8 +41,12 @@ export default async function CoursesPage({
   }
 
   if (data.meta.totalPages > 0 && page > data.meta.totalPages) {
-    redirect(`/courses?page=${data.meta.totalPages}`);
+    redirect(coursesPagePath(data.meta.totalPages, search));
   }
+
+  const emptyMessage = search
+    ? 'Курсы не найдены'
+    : 'Пока нет опубликованных курсов.';
 
   return (
     <div className="space-y-6">
@@ -35,8 +54,23 @@ export default async function CoursesPage({
         <h1 className="text-2xl font-bold text-slate-100">Курсы</h1>
         <p className="mt-1 text-sm text-slate-400">Подборки статей в порядке изучения</p>
       </div>
+      <form method="get" action="/courses" className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          name="search"
+          defaultValue={search}
+          placeholder="Поиск по названию или описанию"
+          className="min-w-[12rem] flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-indigo-500"
+        >
+          Найти
+        </button>
+      </form>
       {data.data.length === 0 ? (
-        <p className="text-slate-400">Пока нет опубликованных курсов.</p>
+        <p className="text-slate-400">{emptyMessage}</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.data.map((course: any) => (
@@ -49,7 +83,7 @@ export default async function CoursesPage({
           {Array.from({ length: data.meta.totalPages }, (_, i) => i + 1).map((p) => (
             <Link
               key={p}
-              href={`/courses?page=${p}`}
+              href={coursesPagePath(p, search)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium no-underline ${
                 p === page
                   ? 'bg-indigo-600/80 text-slate-100'

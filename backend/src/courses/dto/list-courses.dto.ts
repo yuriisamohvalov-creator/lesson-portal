@@ -17,4 +17,8 @@ export class ListCoursesDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

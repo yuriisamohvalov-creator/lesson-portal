@@ -21,11 +21,13 @@ export class CoursesService {
   ) {}
 
   private buildListCacheKey(dto: ListCoursesDto) {
+    const search = dto.search?.trim() || '';
     return CACHE_KEYS.coursesList(
       JSON.stringify({
         page: dto.page || 1,
         limit: dto.limit || 20,
         categoryId: dto.categoryId || '',
+        search,
       }),
     );
   }
@@ -70,6 +72,13 @@ export class CoursesService {
       where.articles = {
         some: { article: { categoryId: dto.categoryId } },
       };
+    }
+    const search = dto.search?.trim();
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const [courses, total] = await Promise.all([
